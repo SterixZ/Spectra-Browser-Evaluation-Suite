@@ -182,6 +182,17 @@ async function runWorkloadBenchmark() {
 
         const context = await browser.newContext();
 
+        // Engine Warmup Pass (Unmetered): prime JIT compiler, GPU compositor, and child processes
+        const warmupPage = await context.newPage();
+        try {
+          await warmupPage.goto("https://www.google.com", { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+          await sleep(1500);
+        } catch {
+        } finally {
+          await warmupPage.close().catch(() => {});
+          await sleep(1000);
+        }
+
         for (const site of siteList) {
           const page = await context.newPage();
           try {
