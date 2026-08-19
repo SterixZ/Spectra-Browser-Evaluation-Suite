@@ -34,13 +34,13 @@
         <span>📈</span>
         <span>Visual Charts</span>
       </button>
-      <button class="nav-item" onclick="switchPageView('headtohead', this)">
-        <span>⚖️</span>
-        <span>The Ratio Game (Diff)</span>
-      </button>
       <button class="nav-item" onclick="switchPageView('table', this)">
         <span>📋</span>
-        <span>Comparison Table</span>
+        <span>Comparison & Ratios</span>
+      </button>
+      <button class="nav-item" onclick="switchPageView('workloads', this)">
+        <span>⚡</span>
+        <span>Performance Comparison</span>
       </button>
       <button class="nav-item" onclick="switchPageView('logs', this)">
         <span>📑</span>
@@ -187,91 +187,14 @@
     </div>
 
     <!-- ================================================================= -->
-    <!-- PAGE 3: THE RATIO GAME & HEAD-TO-HEAD DIFF VIEW (Raj Jain Ch. 11.5) -->
-    <!-- ================================================================= -->
-    <div id="view-headtohead" class="page-view">
-      
-      <!-- The Ratio Game Explanatory Hero Card -->
-      <div class="hero-winner-card" style="margin-bottom:20px;">
-        <div>
-          <div class="winner-badge">Raj Jain Methodology — Ch. 11.5</div>
-          <div class="winner-heading">The Ratio Game Analysis</div>
-          <div class="winner-text">
-            Normalizes performance metrics against a chosen baseline browser. Using <strong>Geometric Mean Ratios</strong> prevents baseline bias and conclusively reveals which browser is mathematically superior overall (<strong>Ratio &gt; 1.00x</strong> indicates superior performance over baseline).
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <label style="font-size:13px; font-weight:700; color:var(--text);">Baseline Browser:</label>
-          <select id="ratioBaselineSelect" class="theme-select" onchange="renderRatioGame()" style="min-width:140px; font-weight:700;"></select>
-        </div>
-      </div>
-
-      <!-- Ratio Game Scorecards Grid -->
-      <div class="card" style="margin-bottom:20px;">
-        <div style="margin-bottom:16px;">
-          <div style="font-size:17px; font-weight:800; color:var(--text);">Normalized Ratio Performance Matrix</div>
-          <div style="font-size:13px; color:var(--muted);">All metrics normalized to chosen baseline (<strong style="color:var(--text);">&gt; 1.00x</strong> = superior performance, <strong style="color:var(--text);">&lt; 1.00x</strong> = inferior)</div>
-        </div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Target Browser</th>
-                <th>Startup Speed Ratio</th>
-                <th>CPU Efficiency Ratio</th>
-                <th>RAM Efficiency Ratio</th>
-                <th>Page Load Ratio</th>
-                <th>Speedometer Ratio</th>
-                <th>Overall GeoMean Ratio</th>
-                <th>Verdict vs Baseline</th>
-              </tr>
-            </thead>
-            <tbody id="ratioGameTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Pairwise Metric Differentials -->
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-          <div>
-            <div style="font-size:17px; font-weight:800; color:var(--text);">Pairwise Metric Differentials</div>
-            <div style="font-size:13px; color:var(--muted);">Direct head-to-head advantage percentage across specific metrics</div>
-          </div>
-          <select id="headToHeadMetricSelect" class="theme-select" onchange="renderHeadToHead()">
-            <option value="startup">Startup Speed (ms)</option>
-            <option value="cpu">CPU Usage (%)</option>
-            <option value="memory">Memory Usage (MB)</option>
-            <option value="pageload">Page Load Time (ms)</option>
-            <option value="speedometer">Speedometer Responsiveness (pts)</option>
-          </select>
-        </div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Comparison Pair</th>
-                <th>Browser A</th>
-                <th>Browser B</th>
-                <th>Advantage / Winner</th>
-                <th>Performance Delta</th>
-                <th>Takeaway Verdict</th>
-              </tr>
-            </thead>
-            <tbody id="headToHeadBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- PAGE 4: DEDICATED COMPARISON TABLE VIEW -->
+    <!-- PAGE 3: UNIFIED COMPARISON TABLE & THE RATIO GAME MATRIX -->
     <!-- ================================================================= -->
     <div id="view-table" class="page-view">
-      <div class="card">
-        <div style="margin-bottom:20px;">
-          <div style="font-size:18px; font-weight:800; color:var(--text);">Side-by-Side Performance Comparison</div>
+      
+      <!-- 1. Side-by-Side Performance Matrix -->
+      <div class="card" style="margin-bottom:24px;">
+        <div style="margin-bottom:18px;">
+          <div style="font-size:18px; font-weight:800; color:var(--text);">Side-by-Side Performance Scorecard</div>
           <div style="font-size:13px; color:var(--muted);">Aggregated metrics and performance rankings across all test categories</div>
         </div>
         <div class="table-scroll">
@@ -292,6 +215,133 @@
           </table>
         </div>
       </div>
+
+      <!-- 2. The Ratio Game (Raj Jain Ch. 11.5) -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);">The Ratio Game (Normalized Performance Matrix)</div>
+            <div style="font-size:13px; color:var(--muted);">Normalizes all metrics to an unbiased baseline using Geometric Mean Ratios (&gt; 1.00x is superior)</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label style="font-size:12.5px; font-weight:700; color:var(--text);">Baseline:</label>
+            <select id="ratioBaselineSelect" class="theme-select" onchange="renderRatioGame()" style="min-width:130px; font-weight:700;"></select>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Target Browser</th>
+                <th>Startup Ratio</th>
+                <th>CPU Ratio</th>
+                <th>RAM Ratio</th>
+                <th>Page Load Ratio</th>
+                <th>Speedometer Ratio</th>
+                <th>Overall GeoMean Ratio</th>
+                <th>Verdict vs Baseline</th>
+              </tr>
+            </thead>
+            <tbody id="ratioGameTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE 4: PERFORMANCE COMPARISON (LIGHT VS HEAVY WORKLOADS) -->
+    <!-- ================================================================= -->
+    <div id="view-workloads" class="page-view">
+      
+      <!-- Workload Header Card -->
+      <div class="hero-winner-card" style="margin-bottom:24px;">
+        <div>
+          <div class="winner-badge">Workload Benchmark Results</div>
+          <div class="winner-heading" id="workloadHeadline">Lightweight vs. Heavyweight Web Workload Comparison</div>
+          <div class="winner-text" id="workloadDesc">
+            Measures how each browser scales under stress from 5 lightweight document sites to 5 heavyweight dynamic SPAs (5 iterations each).
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <label style="font-size:13px; font-weight:700; color:var(--text);">Workload Run:</label>
+          <select id="workloadRunSelect" class="theme-select" onchange="loadWorkloadRun(this.value)" style="min-width:180px; font-weight:700;"></select>
+        </div>
+      </div>
+
+      <!-- Workload Visual Chart -->
+      <div class="card" style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);" id="workloadChartTitle">Page Load Time: Light vs Heavy Websites (ms)</div>
+            <div style="font-size:13px; color:var(--muted);">Comparing average latency and RAM consumption between lightweight and heavy sites</div>
+          </div>
+          <div class="btn-group">
+            <button class="tab-btn active" onclick="setWorkloadChart('load', this)">Load Time (ms)</button>
+            <button class="tab-btn" onclick="setWorkloadChart('ram', this)">RAM Usage (MB)</button>
+            <button class="tab-btn" onclick="setWorkloadChart('cpu', this)">CPU Load (%)</button>
+          </div>
+        </div>
+        <div style="height:380px; position:relative;">
+          <canvas id="workloadChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Workload Comparative Matrix Table -->
+      <div class="card" style="margin-bottom:24px;">
+        <div style="margin-bottom:18px;">
+          <div style="font-size:18px; font-weight:800; color:var(--text);">Workload Overhead & Inflation Ratios</div>
+          <div style="font-size:13px; color:var(--muted);">Performance degradation factor when transitioning from lightweight to heavyweight applications</div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Browser</th>
+                <th>Lightweight Mean Load</th>
+                <th>Heavyweight Mean Load</th>
+                <th>Load Inflation Factor</th>
+                <th>Lightweight RAM</th>
+                <th>Heavyweight RAM</th>
+                <th>RAM Inflation Factor</th>
+                <th>Heavy CPU</th>
+                <th>Stability Verdict</th>
+              </tr>
+            </thead>
+            <tbody id="workloadCompBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Raw Workload Site Observations -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);">Detailed Site Observations</div>
+            <div style="font-size:13px; color:var(--muted);">Individual sample records across all 10 sites and 5 iterations</div>
+          </div>
+          <input type="text" id="workloadFilter" class="theme-input" placeholder="Search site or browser..." onkeyup="filterWorkloadRows()" style="width:220px;" />
+        </div>
+        <div class="table-scroll" style="max-height:450px;">
+          <table id="workloadTable">
+            <thead>
+              <tr>
+                <th>Browser</th>
+                <th>Category</th>
+                <th>Site Name</th>
+                <th>Iter</th>
+                <th>Load Time</th>
+                <th>TTFB</th>
+                <th>DOM Complete</th>
+                <th>CPU %</th>
+                <th>RAM (MB)</th>
+              </tr>
+            </thead>
+            <tbody id="workloadTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- ================================================================= -->
@@ -334,16 +384,19 @@
   };
 
   let benchmarkData = null;
+  let workloadData = null;
   let chartInstance = null;
+  let workloadChartInstance = null;
   let currentChartMetric = 'pageload';
+  let currentWorkloadMetric = 'load';
   let currentCsv = 'pageloads';
   let rawCsvData = {};
 
   const pageMeta = {
     overview: { title: "Benchmark Overview", desc: "Executive summary and multi-dimensional performance rankings across tested browsers" },
     charts: { title: "Visual Charts", desc: "Interactive latency and resource consumption charts across websites" },
-    headtohead: { title: "The Ratio Game (Head-to-Head)", desc: "Normalized performance ratios and geometric advantage analysis (Raj Jain Ch. 11.5)" },
-    table: { title: "Comparison Table", desc: "Comprehensive side-by-side metric matrix across all tested browsers" },
+    table: { title: "Comparison & Ratio Matrix", desc: "Side-by-side performance scorecard combined with Raj Jain's Ratio Game (Ch. 11.5)" },
+    workloads: { title: "Performance Comparison (Workloads)", desc: "Lightweight (5 sites) vs. Heavyweight (5 sites) benchmark results and inflation ratios" },
     logs: { title: "Raw Observation Logs", desc: "Inspection records and exact metric logs from benchmark CSVs" },
   };
 
@@ -363,9 +416,12 @@
     if (viewId === 'charts') {
       setTimeout(renderChart, 50);
     }
-    if (viewId === 'headtohead') {
+    if (viewId === 'table') {
+      renderTable(benchmarkData?.summary || {});
       renderRatioGame();
-      renderHeadToHead();
+    }
+    if (viewId === 'workloads') {
+      setTimeout(renderWorkloadView, 50);
     }
 
     window.location.hash = viewId;
@@ -381,22 +437,24 @@
 
   async function init() {
     const res = await fetch("/api/runs");
-    const { runs } = await res.json();
+    const { runs, workloads } = await res.json();
     const select = document.getElementById("runSelect");
+    const workloadSelect = document.getElementById("workloadRunSelect");
 
-    if (!runs || !runs.length) {
-      document.getElementById("winnerHeadline").innerText = "No benchmark runs found";
-      document.getElementById("winnerText").innerText = "Run `npm run bench` to generate your first benchmark data.";
-      return;
+    if (runs && runs.length) {
+      select.innerHTML = runs.map(r => `<option value="${r}">${r}</option>`).join("");
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('dir') || runs[0];
+      select.value = runs.includes(requested) ? requested : runs[0];
+
+      select.addEventListener('change', () => loadRun(select.value));
+      await loadRun(select.value);
     }
 
-    select.innerHTML = runs.map(r => `<option value="${r}">${r}</option>`).join("");
-    const params = new URLSearchParams(window.location.search);
-    const requested = params.get('dir') || runs[0];
-    select.value = runs.includes(requested) ? requested : runs[0];
-
-    select.addEventListener('change', () => loadRun(select.value));
-    await loadRun(select.value);
+    if (workloads && workloads.length && workloadSelect) {
+      workloadSelect.innerHTML = workloads.map(w => `<option value="${w}">${w}</option>`).join("");
+      await loadWorkloadRun(workloads[0]);
+    }
 
     const initialHash = window.location.hash.replace('#', '');
     if (initialHash && document.getElementById(`view-${initialHash}`)) {
@@ -418,9 +476,8 @@
       renderOverview(data);
       renderCards(data.summary);
       renderChart();
-      renderRatioGame();
-      renderHeadToHead();
       renderTable(data.summary);
+      renderRatioGame();
       renderLogs(currentCsv);
 
       const url = new URL(window.location);
@@ -428,6 +485,17 @@
       window.history.replaceState({}, '', url);
     } catch (err) {
       console.error("Failed to load run:", err);
+    }
+  }
+
+  async function loadWorkloadRun(dir) {
+    try {
+      const res = await fetch(`/api/workloads?dir=${encodeURIComponent(dir)}`);
+      const { data } = await res.json();
+      workloadData = data;
+      renderWorkloadView();
+    } catch (err) {
+      console.error("Failed to load workloads:", err);
     }
   }
 
@@ -529,9 +597,46 @@
     }
   }
 
-  // =========================================================================
-  // THE RATIO GAME IMPLEMENTATION (Raj Jain Ch. 11.5)
-  // =========================================================================
+  function renderTable(summary) {
+    const tbody = document.getElementById("summaryTableBody");
+    const browsers = Object.keys(summary);
+    if (!tbody || !browsers.length) return;
+
+    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
+    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
+    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
+
+    const wins = {};
+    browsers.forEach(b => wins[b] = 0);
+    wins[bestStartup]++;
+    wins[bestCpu]++;
+    wins[bestMem]++;
+
+    const ranked = [...browsers].sort((a,b) => wins[b] - wins[a]);
+
+    tbody.innerHTML = ranked.map((b, idx) => {
+      const s = summary[b];
+      const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
+      const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
+      const rankBadge = idx === 0
+        ? `<span class="pill-tag pill-green">#1 Overall</span>`
+        : `<span class="pill-tag pill-gray">#${idx+1}</span>`;
+
+      return `
+        <tr>
+          <td><strong>${b}</strong></td>
+          <td class="mono">${s.startup.mean.toFixed(0)} ms</td>
+          <td class="mono">${s.cpu.mean.toFixed(1)}%</td>
+          <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
+          <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
+          <td class="mono">${p90Str}</td>
+          <td class="mono">${speedStr}</td>
+          <td>${rankBadge}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
   function renderRatioGame() {
     if (!benchmarkData) return;
     const summary = benchmarkData.summary;
@@ -546,15 +651,11 @@
       const isBase = target === baseline;
       const tData = summary[target];
 
-      // For Lower-is-Better metrics (Startup, CPU, RAM, PageLoad):
-      // Ratio = Baseline / Target (> 1.00x means target is faster/better)
       const rStartup = tData.startup.mean > 0 ? (baseData.startup.mean / tData.startup.mean) : 1;
       const rCpu = tData.cpu.mean > 0 ? (baseData.cpu.mean / tData.cpu.mean) : 1;
       const rMem = tData.memory.mean > 0 ? (baseData.memory.mean / tData.memory.mean) : 1;
       const rLoad = tData.pageload.mean > 0 ? (baseData.pageload.mean / tData.pageload.mean) : 1;
 
-      // For Higher-is-Better metrics (Speedometer):
-      // Ratio = Target / Baseline (> 1.00x means target scores higher)
       const spBase = baseData.speedometer.geoMean || baseData.speedometer.mean || 1;
       const spTarget = tData.speedometer.geoMean || tData.speedometer.mean || 1;
       const rSpeed = spBase > 0 ? (spTarget / spBase) : 1;
@@ -562,7 +663,6 @@
       const ratios = [rStartup, rCpu, rMem, rLoad];
       if (tData.speedometer.n > 0) ratios.push(rSpeed);
 
-      // Geometric Mean of all ratios (Raj Jain Ch. 11.5)
       const logSum = ratios.reduce((acc, r) => acc + Math.log(r > 0 ? r : 1), 0);
       const geoMeanRatio = Math.exp(logSum / ratios.length);
 
@@ -599,49 +699,6 @@
     });
 
     tbody.innerHTML = rows.join('');
-  }
-
-  function renderHeadToHead() {
-    if (!benchmarkData) return;
-    const metric = document.getElementById("headToHeadMetricSelect")?.value || 'startup';
-    const isHigherBetter = metric === 'speedometer';
-    const unitMap = { startup: 'ms', cpu: '%', memory: 'MB', pageload: 'ms', speedometer: 'pts' };
-    const unit = unitMap[metric] || '';
-
-    const tbody = document.getElementById("headToHeadBody");
-    const summary = benchmarkData.summary;
-    const browsers = Object.keys(summary);
-    if (!tbody || browsers.length < 2) return;
-
-    const pairs = [];
-    for (let i = 0; i < browsers.length; i++) {
-      for (let j = i + 1; j < browsers.length; j++) {
-        const b1 = browsers[i];
-        const b2 = browsers[j];
-        const val1 = isHigherBetter ? summary[b1][metric].geoMean : summary[b1][metric].mean;
-        const val2 = isHigherBetter ? summary[b2][metric].geoMean : summary[b2][metric].mean;
-        const diff = Math.abs(val1 - val2);
-        const winner = isHigherBetter ? (val1 >= val2 ? b1 : b2) : (val1 <= val2 ? b1 : b2);
-        const baseline = isHigherBetter ? Math.min(val1, val2) : Math.max(val1, val2);
-        const pct = baseline > 0 ? ((diff / baseline) * 100).toFixed(0) : '0';
-
-        pairs.push({
-          b1, b2, val1, val2, diff, winner, pct,
-          verdict: `${winner} is ${pct}% ${isHigherBetter ? 'faster' : 'more efficient'} than ${winner === b1 ? b2 : b1}`
-        });
-      }
-    }
-
-    tbody.innerHTML = pairs.map(p => `
-      <tr>
-        <td><strong>${p.b1}</strong> vs <strong>${p.b2}</strong></td>
-        <td class="mono">${p.val1.toFixed(1)} ${unit}</td>
-        <td class="mono">${p.val2.toFixed(1)} ${unit}</td>
-        <td><span class="pill-tag pill-green">👑 ${p.winner}</span></td>
-        <td class="mono" style="font-weight:700;">${p.diff.toFixed(1)} ${unit} (${p.pct}%)</td>
-        <td style="color:var(--text); font-size:13px;">${p.verdict}</td>
-      </tr>
-    `).join('');
   }
 
   function setChart(metric, btn) {
@@ -766,43 +823,169 @@
     }
   }
 
-  function renderTable(summary) {
-    const tbody = document.getElementById("summaryTableBody");
-    const browsers = Object.keys(summary);
+  // =========================================================================
+  // WORKLOAD BENCHMARKS LOGIC (Light vs Heavy 5 sites x 5 iterations)
+  // =========================================================================
+  function setWorkloadChart(metric, btn) {
+    currentWorkloadMetric = metric;
+    Array.from(btn.parentElement.children).forEach(c => c.className = 'tab-btn');
+    btn.className = 'tab-btn active';
+    renderWorkloadChart();
+  }
 
-    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
-    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
-    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
+  function renderWorkloadView() {
+    if (!workloadData) return;
+    renderWorkloadCompTable();
+    renderWorkloadChart();
+    renderWorkloadRawTable();
+  }
 
-    const wins = {};
-    browsers.forEach(b => wins[b] = 0);
-    wins[bestStartup]++;
-    wins[bestCpu]++;
-    wins[bestMem]++;
+  function renderWorkloadCompTable() {
+    const comp = workloadData?.comparison || [];
+    const tbody = document.getElementById("workloadCompBody");
+    if (!tbody || !comp.length) return;
 
-    const ranked = [...browsers].sort((a,b) => wins[b] - wins[a]);
-
-    tbody.innerHTML = ranked.map((b, idx) => {
-      const s = summary[b];
-      const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
-      const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
-      const rankBadge = idx === 0
-        ? `<span class="pill-tag pill-green">#1 Overall</span>`
-        : `<span class="pill-tag pill-gray">#${idx+1}</span>`;
+    tbody.innerHTML = comp.map(row => {
+      const loadRatioNum = parseFloat(row.LoadInflationRatio) || 1;
+      let verdict = `<span class="pill-tag pill-green">Minimal Penalty (${row.LoadInflationRatio})</span>`;
+      if (loadRatioNum > 1.35) {
+        verdict = `<span class="pill-tag pill-amber">Significant Overhead (${row.LoadInflationRatio})</span>`;
+      }
 
       return `
         <tr>
-          <td><strong>${b}</strong></td>
-          <td class="mono">${s.startup.mean.toFixed(0)} ms</td>
-          <td class="mono">${s.cpu.mean.toFixed(1)}%</td>
-          <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
-          <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
-          <td class="mono">${p90Str}</td>
-          <td class="mono">${speedStr}</td>
-          <td>${rankBadge}</td>
+          <td><strong>${row.Browser}</strong></td>
+          <td class="mono">${row.Light_MeanLoadMs} ms</td>
+          <td class="mono">${row.Heavy_MeanLoadMs} ms</td>
+          <td><strong style="color:${loadRatioNum < 1.3 ? 'var(--green)' : 'var(--amber)'}; font-family:var(--font-mono);">${row.LoadInflationRatio}</strong></td>
+          <td class="mono">${row.Light_MeanRAM_MB} MB</td>
+          <td class="mono">${row.Heavy_MeanRAM_MB} MB</td>
+          <td><strong style="color:var(--text); font-family:var(--font-mono);">${row.RAM_InflationRatio}</strong></td>
+          <td class="mono">${row.Heavy_MeanCPU}%</td>
+          <td>${verdict}</td>
         </tr>
       `;
     }).join('');
+  }
+
+  function renderWorkloadChart() {
+    if (!workloadData || typeof Chart === 'undefined') return;
+    const ctx = document.getElementById("workloadChart")?.getContext("2d");
+    if (!ctx) return;
+    if (workloadChartInstance) workloadChartInstance.destroy();
+
+    const summary = workloadData.summary || [];
+    const theme = getThemeColors();
+    const browsers = ['Chrome', 'Edge', 'Firefox'];
+
+    let lightVals = [];
+    let heavyVals = [];
+    let yTitle = 'Load Time (ms)';
+
+    if (currentWorkloadMetric === 'load') {
+      document.getElementById("workloadChartTitle").innerText = "Page Load Time: Light vs Heavy Websites (ms)";
+      yTitle = 'Load Time (ms)';
+      browsers.forEach(b => {
+        const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
+        const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
+        lightVals.push(l ? Number(l.MeanLoadMs) : 0);
+        heavyVals.push(h ? Number(h.MeanLoadMs) : 0);
+      });
+    } else if (currentWorkloadMetric === 'ram') {
+      document.getElementById("workloadChartTitle").innerText = "RAM Working Set: Light vs Heavy Websites (MB)";
+      yTitle = 'RAM (MB)';
+      browsers.forEach(b => {
+        const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
+        const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
+        lightVals.push(l ? Number(l.MeanMemoryMB) : 0);
+        heavyVals.push(h ? Number(h.MeanMemoryMB) : 0);
+      });
+    } else {
+      document.getElementById("workloadChartTitle").innerText = "CPU Utilization: Light vs Heavy Websites (%)";
+      yTitle = 'CPU (%)';
+      browsers.forEach(b => {
+        const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
+        const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
+        lightVals.push(l ? Number(l.MeanCpuPercent) : 0);
+        heavyVals.push(h ? Number(h.MeanCpuPercent) : 0);
+      });
+    }
+
+    workloadChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: browsers,
+        datasets: [
+          {
+            label: 'Lightweight Workloads (5 sites)',
+            data: lightVals,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+            borderColor: '#10b981',
+            borderWidth: 1.5,
+            borderRadius: 5,
+          },
+          {
+            label: 'Heavyweight Workloads (5 sites)',
+            data: heavyVals,
+            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            borderColor: '#ef4444',
+            borderWidth: 1.5,
+            borderRadius: 5,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: yTitle, color: theme.text },
+            ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
+            grid: { color: theme.grid },
+          },
+          x: {
+            ticks: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } },
+            grid: { display: false },
+          }
+        },
+        plugins: {
+          legend: { labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ${yTitle.includes('ms') ? 'ms' : yTitle.includes('MB') ? 'MB' : '%'}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderWorkloadRawTable() {
+    const raw = workloadData?.raw || [];
+    const tbody = document.getElementById("workloadTableBody");
+    if (!tbody || !raw.length) return;
+
+    tbody.innerHTML = raw.map(r => `
+      <tr>
+        <td><strong>${r.Browser}</strong></td>
+        <td><span class="pill-tag ${r.Category === 'Lightweight' ? 'pill-green' : 'pill-amber'}">${r.Category}</span></td>
+        <td>${r.SiteName || r.Url}</td>
+        <td class="mono">#${r.Iteration}</td>
+        <td class="mono">${Number(r.LoadTimeMs).toFixed(0)} ms</td>
+        <td class="mono">${r.TTFB_Ms} ms</td>
+        <td class="mono">${r.DomCompleteMs} ms</td>
+        <td class="mono">${r.CpuPercent}%</td>
+        <td class="mono">${Number(r.MemoryMB).toFixed(0)} MB</td>
+      </tr>
+    `).join('');
+  }
+
+  function filterWorkloadRows() {
+    const q = document.getElementById("workloadFilter")?.value.toLowerCase() || '';
+    document.querySelectorAll("#workloadTable tbody tr").forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
   }
 
   function renderLogs(tabName) {

@@ -4,18 +4,17 @@
 const path = require("path");
 const os = require("os");
 const http = require("http");
+const fs = require("fs");
+const { execSync } = require("child_process");
 const express = require("express");
 const { WebSocketServer } = require("ws");
-const { execSync } = require("child_process");
 const { chromium, firefox } = require("playwright");
-const fs = require("fs");
 const {
   computeDescriptiveStats,
   compareTwoAlternatives,
   computeOneWayAnova,
 } = require("../scripts/stats");
 
-// 1000ms tick interval ensures smooth, real-time live telemetry stream
 const TICK_MS = 1000;
 
 const BROWSER_DEFS = {
@@ -62,31 +61,38 @@ async function launchBrowser(name) {
   const session = {
     browser,
     context,
-    startTime: Date.now(),
+    processName: def.process,
     lastCpuTime: getCpuTime(def.process),
     lastSampleTime: Date.now(),
     bandwidthBytes: 0,
     lastBandwidthBytes: 0,
-    processName: def.process,
+    startTime: Date.now(),
+    currentUrl: "",
     interval: null,
   };
   sessions[name] = session;
 
-  const trackPage = (page) => {
-    page.on("response", (response) => {
-      const len = response.headers()["content-length"];
-      if (len && !isNaN(Number(len))) {
-        session.bandwidthBytes += Number(len);
-      }
+  function trackPage(page) {
+    page.on("response", async (res) => {
+      try {
+        const headers = res.headers();
+        const len = headers["content-length"];
+        if (len) {
+          session.bandwidthBytes += Number(len);
+        } else {
+          const body = await res.body().catch(() => null);
+          if (body) session.bandwidthBytes += body.length;
+        }
+      } catch {}
     });
+
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame()) {
         session.currentUrl = frame.url();
       }
     });
-  };
+  }
 
-  session.currentUrl = "about:blank";
   context.on("page", trackPage);
   const firstPage = await context.newPage();
   trackPage(firstPage);
@@ -138,63 +144,62 @@ function tick(name) {
     browser: name,
     cpuPercent: Math.max(0, Math.min(100, cpuPercent)).toFixed(1),
     memoryMB: memoryMB.toFixed(1),
-    runtimeSec: Math.round((now - session.startTime) / 1000),
-    bandwidthTotalKB: (session.bandwidthBytes / 1024).toFixed(1),
+    runtimeSec: Math.floor((now - session.startTime) / 1000),
     bandwidthRateKBs: Math.max(0, bandwidthRateKBs).toFixed(1),
     currentUrl: session.currentUrl,
   });
 }
 
-function parseCsv(filePath) {
-  if (!fs.existsSync(filePath)) return [];
-  const content = fs.readFileSync(filePath, "utf8").replace(/\r/g, "");
-  const lines = content.trim().split("\n");
+function parseCsv(filepath) {
+  if (!fs.existsSync(filepath)) return [];
+  const lines = fs
+    .readFileSync(filepath, "utf8")
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean);
   if (lines.length < 2) return [];
 
-  const header = lines[0].split(",").map((h) => h.trim());
+  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
   return lines.slice(1).map((line) => {
-    const values = line.split(",");
+    // Regex matches comma-separated values while respecting quotes
+    const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
     const row = {};
-    header.forEach((h, i) => (row[h] = values[i] ? values[i].trim() : ""));
+    headers.forEach((h, i) => {
+      row[h] = values[i] ? values[i].trim().replace(/^"|"$/g, "") : "";
+    });
     return row;
   });
 }
 
-// Compute pairwise comparisons across browser pairs
-function computePairwise(groups, unit = "") {
-  const names = Object.keys(groups);
-  const list = [];
-  for (let i = 0; i < names.length; i++) {
-    for (let j = i + 1; j < names.length; j++) {
-      const b1 = names[i];
-      const b2 = names[j];
-      const comp = compareTwoAlternatives(groups[b1], groups[b2], b1, b2);
-      list.push({ ...comp, unit });
+function computePairwise(seriesMap, unit) {
+  const browsers = Object.keys(seriesMap);
+  const pairs = [];
+  for (let i = 0; i < browsers.length; i++) {
+    for (let j = i + 1; j < browsers.length; j++) {
+      const b1 = browsers[i];
+      const b2 = browsers[j];
+      const result = compareTwoAlternatives(seriesMap[b1], seriesMap[b2], b1, b2, unit);
+      pairs.push(result);
     }
   }
-  return list;
+  return pairs;
 }
 
-// Generates points for Empirical Cumulative Distribution Function (CDF) curve (Jain Ch. 12)
 function computeCdfData(values) {
-  const sorted = [...values].sort((a, b) => a - b);
-  const n = sorted.length;
-  if (!n) return [];
+  const clean = values.filter((v) => typeof v === "number" && !isNaN(v)).sort((a, b) => a - b);
+  const n = clean.length;
+  if (n === 0) return [];
 
-  // Generate 25 evenly spaced percentiles
-  const points = [];
-  for (let p = 0; p <= 100; p += 4) {
-    const frac = p / 100;
-    const idx = Math.min(n - 1, Math.floor(frac * (n - 1)));
-    points.push({ percentile: p, latency: Number(sorted[idx].toFixed(1)) });
-  }
-  return points;
+  return clean.map((val, idx) => ({
+    x: Number(val.toFixed(1)),
+    y: Number(((idx + 1) / n).toFixed(4)),
+  }));
 }
 
-function getBenchmarkData(targetDir) {
-  const metrics = parseCsv(path.join(targetDir, "metrics.csv"));
-  const pageloads = parseCsv(path.join(targetDir, "pageload.csv"));
-  const speedometer = parseCsv(path.join(targetDir, "speedometer.csv"));
+function getBenchmarkData(resultsDir) {
+  const metrics = parseCsv(path.join(resultsDir, "metrics.csv"));
+  const speedometer = parseCsv(path.join(resultsDir, "speedometer.csv"));
+  const pageloads = parseCsv(path.join(resultsDir, "pageload.csv"));
 
   const raw = {
     startup: {},
@@ -288,9 +293,6 @@ function getBenchmarkData(targetDir) {
   };
 }
 
-const app = express();
-app.use(express.static(path.join(__dirname, "public")));
-
 function listRunFolders() {
   const PROJECT_ROOT = path.join(__dirname, "..");
   const entries = fs.readdirSync(PROJECT_ROOT, { withFileTypes: true });
@@ -304,8 +306,36 @@ function listRunFolders() {
   return runs;
 }
 
+function listWorkloadFolders() {
+  const PROJECT_ROOT = path.join(__dirname, "..");
+  const entries = fs.readdirSync(PROJECT_ROOT, { withFileTypes: true });
+  const workloads = entries
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .filter((name) => name.startsWith("workloads_"))
+    .filter((name) => fs.existsSync(path.join(PROJECT_ROOT, name, "workload_raw.csv")));
+
+  workloads.sort((a, b) => b.localeCompare(a));
+  return workloads;
+}
+
+function getWorkloadData(workloadDir) {
+  const rawRows = parseCsv(path.join(workloadDir, "workload_raw.csv"));
+  const summaryRows = parseCsv(path.join(workloadDir, "workload_summary.csv"));
+  const comparisonRows = parseCsv(path.join(workloadDir, "workload_comparison.csv"));
+
+  return {
+    raw: rawRows,
+    summary: summaryRows,
+    comparison: comparisonRows,
+  };
+}
+
+const app = express();
+app.use(express.static(path.join(__dirname, "public")));
+
 app.get("/api/runs", (req, res) => {
-  res.json({ runs: listRunFolders() });
+  res.json({ runs: listRunFolders(), workloads: listWorkloadFolders() });
 });
 
 app.get("/api/benchmark", (req, res) => {
@@ -319,6 +349,19 @@ app.get("/api/benchmark", (req, res) => {
 
   const resultsDir = path.join(PROJECT_ROOT, dirName);
   res.json({ dir: dirName, data: getBenchmarkData(resultsDir) });
+});
+
+app.get("/api/workloads", (req, res) => {
+  const PROJECT_ROOT = path.join(__dirname, "..");
+  const workloads = listWorkloadFolders();
+  const dirName = req.query.dir || workloads[0];
+
+  if (!dirName || !workloads.includes(dirName)) {
+    return res.status(404).json({ error: "Workload results folder not found." });
+  }
+
+  const workloadDir = path.join(PROJECT_ROOT, dirName);
+  res.json({ dir: dirName, data: getWorkloadData(workloadDir) });
 });
 
 const server = http.createServer(app);
@@ -358,11 +401,17 @@ wss.on("connection", (ws) => {
 });
 
 process.on("SIGINT", async () => {
-  await Promise.all(Object.keys(sessions).map(stopBrowser));
-  process.exit(0);
+  for (const name of Object.keys(sessions)) {
+    await stopBrowser(name);
+  }
+  process.exit();
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Dashboard running at http://localhost:${PORT}`);
+  console.log(`\n========================================================`);
+  console.log(`🌐 BROWSER PERFORMANCE DASHBOARD`);
+  console.log(`📡 Evaluation Console: http://localhost:${PORT}/benchmark.html`);
+  console.log(`⚡ Live Telemetry:     http://localhost:${PORT}`);
+  console.log(`========================================================\n`);
 });
