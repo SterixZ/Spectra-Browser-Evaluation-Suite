@@ -241,6 +241,7 @@ function computeOneWayAnova(groups) {
 module.exports = {
   getTCritical,
   computeDescriptiveStats,
+  computeStats: computeDescriptiveStats,
   compareTwoAlternatives,
   computeOneWayAnova,
 };

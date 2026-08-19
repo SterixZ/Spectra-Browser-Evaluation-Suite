@@ -9,7 +9,7 @@ const { performance } = require("perf_hooks");
 const { execSync } = require("child_process");
 const { BROWSERS } = require("./config");
 const { getLaunchers } = require("./browsers");
-const { computeStats } = require("./stats");
+const { computeDescriptiveStats } = require("./stats");
 
 const ITERATIONS = Number(process.env.ITERATIONS) || 5;
 const STABILIZE_MS = Number(process.env.STABILIZE_MS) || 3000;
@@ -188,14 +188,14 @@ async function runWorkloadBenchmark() {
   console.log(`------------------------------------------------------------------------`);
 
   for (const [browser, catData] of Object.entries(aggregated)) {
-    const lightStats = computeStats(catData.Lightweight.loadTimes);
-    const heavyStats = computeStats(catData.Heavyweight.loadTimes);
+    const lightStats = computeDescriptiveStats(catData.Lightweight.loadTimes);
+    const heavyStats = computeDescriptiveStats(catData.Heavyweight.loadTimes);
 
-    const lightCpuStats = computeStats(catData.Lightweight.cpus);
-    const heavyCpuStats = computeStats(catData.Heavyweight.cpus);
+    const lightCpuStats = computeDescriptiveStats(catData.Lightweight.cpus);
+    const heavyCpuStats = computeDescriptiveStats(catData.Heavyweight.cpus);
 
-    const lightMemStats = computeStats(catData.Lightweight.mems);
-    const heavyMemStats = computeStats(catData.Heavyweight.mems);
+    const lightMemStats = computeDescriptiveStats(catData.Lightweight.mems);
+    const heavyMemStats = computeDescriptiveStats(catData.Heavyweight.mems);
 
     summaryRows.push(
       `${browser},Lightweight,${lightStats.n},${lightStats.mean.toFixed(1)},${lightStats.median.toFixed(
