@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "bench": "node scripts/runner.js",
+    "bench:workloads": "node scripts/workload_benchmark.js",
     "analyze": "node scripts/analyze.js",
     "dashboard": "node dashboard/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
