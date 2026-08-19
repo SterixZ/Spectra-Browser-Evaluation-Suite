@@ -1,6 +1,6 @@
 // Lightweight vs. Heavyweight Browser Workload Benchmark
-// Measures and compares performance across 5 Lightweight and 5 Heavyweight websites
-// with 5 iterations per browser, robust stabilization periods, and comparative CSV outputs.
+// Continuously monitors CPU & RAM during active navigation to capture Peak CPU Spikes
+// and Peak Memory Allocations, outputting structured comparative CSVs and analysis.
 
 const os = require("os");
 const fs = require("fs");
@@ -12,9 +12,9 @@ const { getLaunchers } = require("./browsers");
 const { computeDescriptiveStats } = require("./stats");
 
 const ITERATIONS = Number(process.env.ITERATIONS) || 5;
-const STABILIZE_MS = Number(process.env.STABILIZE_MS) || 2000;
+const STABILIZE_MS = Number(process.env.STABILIZE_MS) || 1500;
 const INTER_SITE_DELAY_MS = 1500;
-const INTER_ITERATION_DELAY_MS = 3000;
+const INTER_ITERATION_DELAY_MS = 2500;
 
 // High-Reliability Categorized Website Workloads (Zero flaky DNS / ad trackers)
 const WORKLOADS = {
@@ -57,23 +57,73 @@ function getMemoryMB(processName) {
   }
 }
 
-// Robust CPU measurement over a continuous measurement window
-async function sampleCpuPercent(processName, durationMs = 1200) {
-  const cpuCount = os.cpus().length;
-  const startCpu = getCpuTime(processName);
-  const startWall = performance.now();
+// Continuous telemetry monitor that samples CPU and Memory every 350ms during navigation
+class NavigationTelemetryMonitor {
+  constructor(processName, sampleIntervalMs = 350) {
+    this.processName = processName;
+    this.sampleIntervalMs = sampleIntervalMs;
+    this.cpuCount = os.cpus().length;
+    this.samples = [];
+    this.peakCpu = 0;
+    this.peakMemoryMB = 0;
+    this.running = false;
+    this.lastCpuTime = 0;
+    this.lastWallTime = 0;
+  }
 
-  await sleep(durationMs);
+  start() {
+    this.running = true;
+    this.lastCpuTime = getCpuTime(this.processName);
+    this.lastWallTime = performance.now();
+    this.peakMemoryMB = getMemoryMB(this.processName);
 
-  const endCpu = getCpuTime(processName);
-  const endWall = performance.now();
+    const loop = async () => {
+      while (this.running) {
+        await sleep(this.sampleIntervalMs);
+        if (!this.running) break;
 
-  const deltaCpuSec = endCpu - startCpu;
-  const deltaWallSec = (endWall - startWall) / 1000;
+        const currentCpuTime = getCpuTime(this.processName);
+        const currentWallTime = performance.now();
+        const currentMem = getMemoryMB(this.processName);
 
-  if (deltaCpuSec <= 0 || deltaWallSec <= 0) return 0.0;
-  const percent = (deltaCpuSec * 100) / (cpuCount * deltaWallSec);
-  return Number(Math.max(0, Math.min(100, percent)).toFixed(2));
+        const deltaCpuSec = currentCpuTime - this.lastCpuTime;
+        const deltaWallSec = (currentWallTime - this.lastWallTime) / 1000;
+
+        if (deltaWallSec > 0 && deltaCpuSec >= 0) {
+          const cpuPercent = Number(
+            Math.max(0, Math.min(100, (deltaCpuSec * 100) / (this.cpuCount * deltaWallSec))).toFixed(2)
+          );
+          this.samples.push({ cpu: cpuPercent, mem: currentMem });
+          if (cpuPercent > this.peakCpu) this.peakCpu = cpuPercent;
+          if (currentMem > this.peakMemoryMB) this.peakMemoryMB = currentMem;
+        }
+
+        this.lastCpuTime = currentCpuTime;
+        this.lastWallTime = currentWallTime;
+      }
+    };
+
+    loop();
+  }
+
+  stop() {
+    this.running = false;
+    const avgCpu =
+      this.samples.length > 0
+        ? Number((this.samples.reduce((a, b) => a + b.cpu, 0) / this.samples.length).toFixed(2))
+        : 0;
+    const finalMem =
+      this.samples.length > 0
+        ? Number(this.samples[this.samples.length - 1].mem.toFixed(1))
+        : getMemoryMB(this.processName);
+
+    return {
+      peakCpu: Number(this.peakCpu.toFixed(2)),
+      avgCpu,
+      peakMemoryMB: Number(this.peakMemoryMB.toFixed(1)),
+      finalMemoryMB: finalMem,
+    };
+  }
 }
 
 async function runWorkloadBenchmark() {
@@ -88,12 +138,12 @@ async function runWorkloadBenchmark() {
   console.log(`\n========================================================================`);
   console.log(`🧪 LIGHTWEIGHT VS. HEAVYWEIGHT WORKLOAD BENCHMARK`);
   console.log(`   5 Light Sites vs. 5 Heavy Sites (${ITERATIONS} iterations each)`);
-  console.log(`   Stabilization: ${STABILIZE_MS}ms post-load | Inter-site: ${INTER_SITE_DELAY_MS}ms`);
+  console.log(`   Sampling Mode: Continuous Active-Navigation Peak Load Tracking`);
   console.log(`   Output Directory: ${outputDir}`);
   console.log(`========================================================================\n`);
 
   const rawRows = [
-    "Browser,Category,SiteName,Url,Iteration,LoadTimeMs,TTFB_Ms,DomCompleteMs,CpuPercent,MemoryMB",
+    "Browser,Category,SiteName,Url,Iteration,LoadTimeMs,TTFB_Ms,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB",
   ];
 
   const launchers = getLaunchers();
@@ -101,8 +151,8 @@ async function runWorkloadBenchmark() {
 
   for (const browserInfo of launchers) {
     aggregated[browserInfo.name] = {
-      Lightweight: { loadTimes: [], cpus: [], mems: [] },
-      Heavyweight: { loadTimes: [], cpus: [], mems: [] },
+      Lightweight: { loadTimes: [], peakCpus: [], peakMems: [] },
+      Heavyweight: { loadTimes: [], peakCpus: [], peakMems: [] },
     };
 
     console.log(`\n▶ Starting Evaluation: ${browserInfo.name.toUpperCase()}`);
@@ -121,51 +171,68 @@ async function runWorkloadBenchmark() {
         for (const site of siteList) {
           const page = await context.newPage();
           try {
+            // Start continuous peak load telemetry monitor
+            const monitor = new NavigationTelemetryMonitor(browserInfo.process, 350);
+            monitor.start();
+
             const startNav = performance.now();
-            
+
             // Navigate with resilient fallback
-            await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(async () => {
-              await page.goto(site.url, { waitUntil: "commit", timeout: 25000 });
-            });
+            await page
+              .goto(site.url, { waitUntil: "domcontentloaded", timeout: 25000 })
+              .catch(async () => {
+                await page.goto(site.url, { waitUntil: "commit", timeout: 25000 });
+              });
             await page.waitForLoadState("load", { timeout: 6000 }).catch(() => {});
-            
+
             const totalNavMs = performance.now() - startNav;
 
-            const timings = await page.evaluate(() => {
-              const nav = performance.getEntriesByType("navigation")[0];
-              if (!nav) return { loadTime: null, ttfb: null, domComplete: null };
-              return {
-                loadTime: nav.loadEventEnd > 0 ? nav.loadEventEnd : (nav.domContentLoadedEventEnd > 0 ? nav.domContentLoadedEventEnd : nav.responseEnd),
-                ttfb: nav.responseStart,
-                domComplete: nav.domComplete,
-              };
-            }).catch(() => ({ loadTime: null, ttfb: null, domComplete: null }));
+            const timings = await page
+              .evaluate(() => {
+                const nav = performance.getEntriesByType("navigation")[0];
+                if (!nav) return { loadTime: null, ttfb: null, domComplete: null };
+                return {
+                  loadTime:
+                    nav.loadEventEnd > 0
+                      ? nav.loadEventEnd
+                      : nav.domContentLoadedEventEnd > 0
+                      ? nav.domContentLoadedEventEnd
+                      : nav.responseEnd,
+                  ttfb: nav.responseStart,
+                  domComplete: nav.domComplete,
+                };
+              })
+              .catch(() => ({ loadTime: null, ttfb: null, domComplete: null }));
 
-            const effectiveLoad = timings.loadTime != null && timings.loadTime > 0 ? timings.loadTime : totalNavMs;
+            const effectiveLoad =
+              timings.loadTime != null && timings.loadTime > 0 ? timings.loadTime : totalNavMs;
             const ttfb = timings.ttfb != null ? timings.ttfb.toFixed(1) : "0.0";
             const domComplete = timings.domComplete != null ? timings.domComplete.toFixed(1) : "0.0";
 
-            // Allow post-navigation scripts to settle before sampling
+            // Allow post-load parsing to settle while still recording peaks
             await sleep(STABILIZE_MS);
 
-            // Measure CPU load over a stable 1.2s window
-            const cpu = await sampleCpuPercent(browserInfo.process, 1200);
-            const mem = getMemoryMB(browserInfo.process);
+            // Stop continuous monitor and retrieve peak values
+            const tele = monitor.stop();
 
             aggregated[browserInfo.name][category].loadTimes.push(effectiveLoad);
-            aggregated[browserInfo.name][category].cpus.push(cpu);
-            aggregated[browserInfo.name][category].mems.push(mem);
+            aggregated[browserInfo.name][category].peakCpus.push(tele.peakCpu);
+            aggregated[browserInfo.name][category].peakMems.push(tele.peakMemoryMB);
 
             rawRows.push(
               `${browserInfo.name},${category},"${site.name}","${site.url}",${iter},${effectiveLoad.toFixed(
                 1
-              )},${ttfb},${domComplete},${cpu.toFixed(2)},${mem.toFixed(1)}`
+              )},${ttfb},${domComplete},${tele.peakCpu.toFixed(2)},${tele.avgCpu.toFixed(
+                2
+              )},${tele.peakMemoryMB.toFixed(1)},${tele.finalMemoryMB.toFixed(1)}`
             );
 
             console.log(
-              `      • ${site.name.padEnd(20)} | Load: ${effectiveLoad.toFixed(0).padStart(5)}ms | RAM: ${mem
+              `      • ${site.name.padEnd(20)} | Load: ${effectiveLoad
                 .toFixed(0)
-                .padStart(5)}MB | CPU: ${cpu.toFixed(1)}%`
+                .padStart(5)}ms | Peak RAM: ${tele.peakMemoryMB
+                .toFixed(0)
+                .padStart(5)}MB | Peak CPU: ${tele.peakCpu.toFixed(1).padStart(4)}%`
             );
           } catch (err) {
             console.log(`      • ${site.name.padEnd(20)} | ⚠️ Timeout/Skipped (${err.message.slice(0, 30)})`);
@@ -188,18 +255,18 @@ async function runWorkloadBenchmark() {
 
   // 2. Generate and Write Comparative Summary CSV
   const summaryRows = [
-    "Browser,Category,SampleCount,MeanLoadMs,MedianLoadMs,P90LoadMs,MeanCpuPercent,MeanMemoryMB,CoV_LoadTime",
+    "Browser,Category,SampleCount,MeanLoadMs,MedianLoadMs,P90LoadMs,MeanPeakCpuPercent,MeanPeakMemoryMB,CoV_LoadTime",
   ];
 
   const comparisonRows = [
-    "Browser,Light_MeanLoadMs,Heavy_MeanLoadMs,LoadInflationRatio,Light_MeanRAM_MB,Heavy_MeanRAM_MB,RAM_InflationRatio,Light_MeanCPU,Heavy_MeanCPU",
+    "Browser,Light_MeanLoadMs,Heavy_MeanLoadMs,LoadInflationRatio,Light_PeakRAM_MB,Heavy_PeakRAM_MB,RAM_InflationRatio,Light_PeakCPU,Heavy_PeakCPU",
   ];
 
   console.log(`\n========================================================================`);
-  console.log(`📊 COMPARATIVE WORKLOAD SUMMARY: LIGHTWEIGHT VS. HEAVYWEIGHT`);
+  console.log(`📊 COMPARATIVE WORKLOAD SUMMARY: LIGHTWEIGHT VS. HEAVYWEIGHT (PEAK STRESS)`);
   console.log(`========================================================================`);
   console.log(
-    `Browser     Category      Mean Load     Median     P90 Load     Mean RAM     Mean CPU`
+    `Browser     Category      Mean Load     Median     P90 Load     Peak RAM     Peak CPU`
   );
   console.log(`------------------------------------------------------------------------`);
 
@@ -207,11 +274,11 @@ async function runWorkloadBenchmark() {
     const lightStats = computeDescriptiveStats(catData.Lightweight.loadTimes);
     const heavyStats = computeDescriptiveStats(catData.Heavyweight.loadTimes);
 
-    const lightCpuStats = computeDescriptiveStats(catData.Lightweight.cpus);
-    const heavyCpuStats = computeDescriptiveStats(catData.Heavyweight.cpus);
+    const lightCpuStats = computeDescriptiveStats(catData.Lightweight.peakCpus);
+    const heavyCpuStats = computeDescriptiveStats(catData.Heavyweight.peakCpus);
 
-    const lightMemStats = computeDescriptiveStats(catData.Lightweight.mems);
-    const heavyMemStats = computeDescriptiveStats(catData.Heavyweight.mems);
+    const lightMemStats = computeDescriptiveStats(catData.Lightweight.peakMems);
+    const heavyMemStats = computeDescriptiveStats(catData.Heavyweight.peakMems);
 
     summaryRows.push(
       `${browser},Lightweight,${lightStats.n},${lightStats.mean.toFixed(1)},${lightStats.median.toFixed(
@@ -253,7 +320,7 @@ async function runWorkloadBenchmark() {
       ).padEnd(12)} ${heavyCpuStats.mean.toFixed(1)}%`
     );
     console.log(
-      `            ↳ Workload Overhead: Heavy sites take ${loadRatio}x longer & use ${memRatio}x more RAM\n`
+      `            ↳ Workload Overhead: Heavy sites take ${loadRatio}x longer & use ${memRatio}x more peak RAM\n`
     );
   }
 
@@ -266,7 +333,7 @@ async function runWorkloadBenchmark() {
   console.log(`========================================================================`);
   console.log(`✅ BENCHMARK COMPLETE!`);
   console.log(`📁 Files generated in: ${outputDir}`);
-  console.log(`   1. workload_raw.csv        (Detailed observation rows)`);
+  console.log(`   1. workload_raw.csv        (Detailed observation rows with Peak CPU & RAM)`);
   console.log(`   2. workload_summary.csv    (Category aggregate statistics)`);
   console.log(`   3. workload_comparison.csv (Direct Light vs Heavy inflation ratios)`);
   console.log(`========================================================================\n`);

@@ -981,16 +981,20 @@
         verdict = `<span class="pill-tag pill-amber">Significant Overhead (${row.LoadInflationRatio})</span>`;
       }
 
+      const lightRam = row.Light_PeakRAM_MB || row.Light_MeanRAM_MB || '—';
+      const heavyRam = row.Heavy_PeakRAM_MB || row.Heavy_MeanRAM_MB || '—';
+      const heavyCpu = row.Heavy_PeakCPU || row.Heavy_MeanCPU || '—';
+
       return `
         <tr>
           <td><strong>${row.Browser}</strong></td>
           <td class="mono">${row.Light_MeanLoadMs} ms</td>
           <td class="mono">${row.Heavy_MeanLoadMs} ms</td>
           <td><strong style="color:${loadRatioNum < 1.3 ? 'var(--green)' : 'var(--amber)'}; font-family:var(--font-mono);">${row.LoadInflationRatio}</strong></td>
-          <td class="mono">${row.Light_MeanRAM_MB} MB</td>
-          <td class="mono">${row.Heavy_MeanRAM_MB} MB</td>
+          <td class="mono">${lightRam} MB</td>
+          <td class="mono">${heavyRam} MB</td>
           <td><strong style="color:var(--text); font-family:var(--font-mono);">${row.RAM_InflationRatio}</strong></td>
-          <td class="mono">${row.Heavy_MeanCPU}%</td>
+          <td class="mono">${heavyCpu}%</td>
           <td>${verdict}</td>
         </tr>
       `;
@@ -1021,22 +1025,26 @@
         heavyVals.push(h ? Number(h.MeanLoadMs) : 0);
       });
     } else if (currentWorkloadMetric === 'ram') {
-      document.getElementById("workloadChartTitle").innerText = "RAM Working Set: Light vs Heavy Websites (MB)";
+      document.getElementById("workloadChartTitle").innerText = "Peak RAM Allocation: Light vs Heavy Websites (MB)";
       yTitle = 'RAM (MB)';
       browsers.forEach(b => {
         const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
         const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
-        lightVals.push(l ? Number(l.MeanMemoryMB) : 0);
-        heavyVals.push(h ? Number(h.MeanMemoryMB) : 0);
+        const lRam = l ? (l.MeanPeakMemoryMB || l.MeanMemoryMB) : 0;
+        const hRam = h ? (h.MeanPeakMemoryMB || h.MeanMemoryMB) : 0;
+        lightVals.push(Number(lRam));
+        heavyVals.push(Number(hRam));
       });
     } else {
-      document.getElementById("workloadChartTitle").innerText = "CPU Utilization: Light vs Heavy Websites (%)";
+      document.getElementById("workloadChartTitle").innerText = "Peak CPU Spike during Load: Light vs Heavy Websites (%)";
       yTitle = 'CPU (%)';
       browsers.forEach(b => {
         const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
         const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
-        lightVals.push(l ? Number(l.MeanCpuPercent) : 0);
-        heavyVals.push(h ? Number(h.MeanCpuPercent) : 0);
+        const lCpu = l ? (l.MeanPeakCpuPercent || l.MeanCpuPercent) : 0;
+        const hCpu = h ? (h.MeanPeakCpuPercent || h.MeanCpuPercent) : 0;
+        lightVals.push(Number(lCpu));
+        heavyVals.push(Number(hCpu));
       });
     }
 
@@ -1095,19 +1103,24 @@
     const tbody = document.getElementById("workloadTableBody");
     if (!tbody || !raw.length) return;
 
-    tbody.innerHTML = raw.map(r => `
-      <tr>
-        <td><strong>${r.Browser}</strong></td>
-        <td><span class="pill-tag ${r.Category === 'Lightweight' ? 'pill-green' : 'pill-amber'}">${r.Category}</span></td>
-        <td>${r.SiteName || r.Url}</td>
-        <td class="mono">#${r.Iteration}</td>
-        <td class="mono">${Number(r.LoadTimeMs).toFixed(0)} ms</td>
-        <td class="mono">${r.TTFB_Ms} ms</td>
-        <td class="mono">${r.DomCompleteMs} ms</td>
-        <td class="mono">${r.CpuPercent}%</td>
-        <td class="mono">${Number(r.MemoryMB).toFixed(0)} MB</td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = raw.map(r => {
+      const cpuVal = r.PeakCpuPercent != null ? r.PeakCpuPercent : r.CpuPercent;
+      const memVal = r.PeakMemoryMB != null ? r.PeakMemoryMB : r.MemoryMB;
+
+      return `
+        <tr>
+          <td><strong>${r.Browser}</strong></td>
+          <td><span class="pill-tag ${r.Category === 'Lightweight' ? 'pill-green' : 'pill-amber'}">${r.Category}</span></td>
+          <td>${r.SiteName || r.Url}</td>
+          <td class="mono">#${r.Iteration}</td>
+          <td class="mono">${Number(r.LoadTimeMs).toFixed(0)} ms</td>
+          <td class="mono">${r.TTFB_Ms} ms</td>
+          <td class="mono">${r.DomCompleteMs} ms</td>
+          <td class="mono">${cpuVal}%</td>
+          <td class="mono">${Number(memVal).toFixed(0)} MB</td>
+        </tr>
+      `;
+    }).join('');
   }
 
   function filterWorkloadRows() {
