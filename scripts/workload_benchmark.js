@@ -29,8 +29,8 @@ const WORKLOADS = {
     { name: "Reddit Feed", url: "https://www.reddit.com" },
     { name: "YouTube Home", url: "https://www.youtube.com" },
     { name: "GitHub VSCode Repo", url: "https://github.com/microsoft/vscode" },
-    { name: "The Verge Tech", url: "https://www.theverge.com" },
-    { name: "CNN Multimedia", url: "https://www.cnn.com" },
+    { name: "Amazon Portal", url: "https://www.amazon.com" },
+    { name: "Unsplash Media", url: "https://unsplash.com" },
   ],
 };
 
@@ -114,14 +114,15 @@ async function runWorkloadBenchmark() {
           const page = await context.newPage();
           try {
             const startNav = performance.now();
-            await page.goto(site.url, { waitUntil: "load", timeout: 35000 });
+            await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 20000 });
+            await page.waitForLoadState("load", { timeout: 8000 }).catch(() => {});
             const totalNavMs = performance.now() - startNav;
 
             const timings = await page.evaluate(() => {
               const nav = performance.getEntriesByType("navigation")[0];
               if (!nav) return { loadTime: null, ttfb: null, domComplete: null };
               return {
-                loadTime: nav.loadEventEnd > 0 ? nav.loadEventEnd : nav.responseEnd,
+                loadTime: nav.loadEventEnd > 0 ? nav.loadEventEnd : nav.domContentLoadedEventEnd,
                 ttfb: nav.responseStart,
                 domComplete: nav.domComplete,
               };
