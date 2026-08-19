@@ -1,6 +1,6 @@
 // Lightweight vs. Heavyweight Browser Workload Benchmark
 // Measures and compares performance across 5 Lightweight and 5 Heavyweight websites
-// with 5 iterations per browser, outputting structured comparative CSVs and analysis.
+// with 5 iterations per browser, robust stabilization periods, and comparative CSV outputs.
 
 const os = require("os");
 const fs = require("fs");
@@ -12,18 +12,18 @@ const { getLaunchers } = require("./browsers");
 const { computeDescriptiveStats } = require("./stats");
 
 const ITERATIONS = Number(process.env.ITERATIONS) || 5;
-const STABILIZE_MS = Number(process.env.STABILIZE_MS) || 3000;
-const CPU_SAMPLE_COUNT = 3;
-const CPU_SAMPLE_INTERVAL_MS = 1000;
+const STABILIZE_MS = Number(process.env.STABILIZE_MS) || 2000;
+const INTER_SITE_DELAY_MS = 1500;
+const INTER_ITERATION_DELAY_MS = 3000;
 
-// Categorized Website Workloads
+// High-Reliability Categorized Website Workloads (Zero flaky DNS / ad trackers)
 const WORKLOADS = {
   Lightweight: [
     { name: "Example Domain", url: "https://example.com" },
     { name: "Hacker News", url: "https://news.ycombinator.com" },
     { name: "Wikipedia Main", url: "https://en.wikipedia.org/wiki/Main_Page" },
     { name: "HTTPBin HTML", url: "https://httpbin.org/html" },
-    { name: "Dan Luu Blog", url: "https://danluu.com" },
+    { name: "W3C Consortium", url: "https://www.w3.org" },
   ],
   Heavyweight: [
     { name: "Reddit Feed", url: "https://www.reddit.com" },
@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function getCpuTime(processName) {
   try {
-    const cmd = `powershell -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object CPU -Sum).Sum"`;
+    const cmd = `powershell -NoProfile -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object CPU -Sum).Sum"`;
     const output = execSync(cmd, { encoding: "utf8" }).trim();
     return Number(output) || 0;
   } catch {
@@ -48,7 +48,7 @@ function getCpuTime(processName) {
 
 function getMemoryMB(processName) {
   try {
-    const cmd = `powershell -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object WorkingSet64 -Sum).Sum"`;
+    const cmd = `powershell -NoProfile -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object WorkingSet64 -Sum).Sum"`;
     const output = execSync(cmd, { encoding: "utf8" }).trim();
     const bytes = Number(output);
     return isNaN(bytes) ? 0 : bytes / 1024 / 1024;
@@ -57,16 +57,23 @@ function getMemoryMB(processName) {
   }
 }
 
-async function sampleAverageCpuPercent(processName, samples, intervalMs) {
-  let total = 0;
-  for (let i = 0; i < samples; i++) {
-    const start = getCpuTime(processName);
-    await sleep(intervalMs);
-    const end = getCpuTime(processName);
-    const cpuSeconds = end - start;
-    total += (cpuSeconds * 100) / (os.cpus().length * (intervalMs / 1000));
-  }
-  return total / samples;
+// Robust CPU measurement over a continuous measurement window
+async function sampleCpuPercent(processName, durationMs = 1200) {
+  const cpuCount = os.cpus().length;
+  const startCpu = getCpuTime(processName);
+  const startWall = performance.now();
+
+  await sleep(durationMs);
+
+  const endCpu = getCpuTime(processName);
+  const endWall = performance.now();
+
+  const deltaCpuSec = endCpu - startCpu;
+  const deltaWallSec = (endWall - startWall) / 1000;
+
+  if (deltaCpuSec <= 0 || deltaWallSec <= 0) return 0.0;
+  const percent = (deltaCpuSec * 100) / (cpuCount * deltaWallSec);
+  return Number(Math.max(0, Math.min(100, percent)).toFixed(2));
 }
 
 async function runWorkloadBenchmark() {
@@ -81,6 +88,7 @@ async function runWorkloadBenchmark() {
   console.log(`\n========================================================================`);
   console.log(`🧪 LIGHTWEIGHT VS. HEAVYWEIGHT WORKLOAD BENCHMARK`);
   console.log(`   5 Light Sites vs. 5 Heavy Sites (${ITERATIONS} iterations each)`);
+  console.log(`   Stabilization: ${STABILIZE_MS}ms post-load | Inter-site: ${INTER_SITE_DELAY_MS}ms`);
   console.log(`   Output Directory: ${outputDir}`);
   console.log(`========================================================================\n`);
 
@@ -114,27 +122,34 @@ async function runWorkloadBenchmark() {
           const page = await context.newPage();
           try {
             const startNav = performance.now();
-            await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 20000 });
-            await page.waitForLoadState("load", { timeout: 8000 }).catch(() => {});
+            
+            // Navigate with resilient fallback
+            await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(async () => {
+              await page.goto(site.url, { waitUntil: "commit", timeout: 25000 });
+            });
+            await page.waitForLoadState("load", { timeout: 6000 }).catch(() => {});
+            
             const totalNavMs = performance.now() - startNav;
 
             const timings = await page.evaluate(() => {
               const nav = performance.getEntriesByType("navigation")[0];
               if (!nav) return { loadTime: null, ttfb: null, domComplete: null };
               return {
-                loadTime: nav.loadEventEnd > 0 ? nav.loadEventEnd : nav.domContentLoadedEventEnd,
+                loadTime: nav.loadEventEnd > 0 ? nav.loadEventEnd : (nav.domContentLoadedEventEnd > 0 ? nav.domContentLoadedEventEnd : nav.responseEnd),
                 ttfb: nav.responseStart,
                 domComplete: nav.domComplete,
               };
-            });
+            }).catch(() => ({ loadTime: null, ttfb: null, domComplete: null }));
 
             const effectiveLoad = timings.loadTime != null && timings.loadTime > 0 ? timings.loadTime : totalNavMs;
             const ttfb = timings.ttfb != null ? timings.ttfb.toFixed(1) : "0.0";
             const domComplete = timings.domComplete != null ? timings.domComplete.toFixed(1) : "0.0";
 
-            await sleep(500);
+            // Allow post-navigation scripts to settle before sampling
+            await sleep(STABILIZE_MS);
 
-            const cpu = await sampleAverageCpuPercent(browserInfo.process, 1, 500);
+            // Measure CPU load over a stable 1.2s window
+            const cpu = await sampleCpuPercent(browserInfo.process, 1200);
             const mem = getMemoryMB(browserInfo.process);
 
             aggregated[browserInfo.name][category].loadTimes.push(effectiveLoad);
@@ -156,12 +171,13 @@ async function runWorkloadBenchmark() {
             console.log(`      • ${site.name.padEnd(20)} | ⚠️ Timeout/Skipped (${err.message.slice(0, 30)})`);
           } finally {
             await page.close().catch(() => {});
+            await sleep(INTER_SITE_DELAY_MS);
           }
         }
 
         await context.close().catch(() => {});
         await browser.close().catch(() => {});
-        await sleep(1500);
+        await sleep(INTER_ITERATION_DELAY_MS);
       }
     }
   }
