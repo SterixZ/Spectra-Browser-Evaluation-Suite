@@ -730,19 +730,38 @@
   let chartCpuInstance = null;
   let chartMemInstance = null;
 
+  const CANONICAL_SITES = [
+    "https://www.google.com",
+    "https://github.com",
+    "https://stackoverflow.com",
+    "https://www.wikipedia.org",
+    "https://www.youtube.com",
+    "https://www.reddit.com",
+    "https://www.microsoft.com",
+    "https://developer.mozilla.org",
+    "https://playwright.dev",
+    "https://openai.com",
+  ];
+
+  function getCanonicalSiteIndex(url) {
+    const norm = url.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '').toLowerCase();
+    const idx = CANONICAL_SITES.findIndex(c => c.toLowerCase().includes(norm));
+    return idx === -1 ? 999 : idx;
+  }
+
   function cleanSiteLabel(url) {
     const raw = url.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '').toLowerCase();
     const map = {
       'google.com': 'Google',
+      'github.com': 'GitHub',
       'stackoverflow.com': 'StackOverflow',
       'wikipedia.org': 'Wikipedia',
       'youtube.com': 'YouTube',
       'reddit.com': 'Reddit',
       'microsoft.com': 'Microsoft',
+      'developer.mozilla.org': 'MDN Web',
       'playwright.dev': 'Playwright',
       'openai.com': 'OpenAI',
-      'github.com': 'GitHub',
-      'developer.mozilla.org': 'MDN Web',
     };
     return map[raw] || raw;
   }
@@ -782,7 +801,7 @@
     const browsers = Object.keys(summary);
     const theme = getThemeColors();
 
-    const sites = Object.keys(siteSummary);
+    const sites = Object.keys(siteSummary).sort((a, b) => getCanonicalSiteIndex(a) - getCanonicalSiteIndex(b));
     const cleanLabels = sites.map(cleanSiteLabel);
 
     const datasets = browsers.map(b => {
