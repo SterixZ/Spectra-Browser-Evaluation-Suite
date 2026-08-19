@@ -170,18 +170,37 @@
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
           <div>
-            <div style="font-size:18px; font-weight:800; color:var(--text);" id="chartTitle">Page Load Speed across Websites</div>
-            <div style="font-size:13px; color:var(--muted);">Interactive comparison across measured websites and metrics (Lower is better)</div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);" id="chartTitle">Page Load Speed across Websites (ms)</div>
+            <div style="font-size:13px; color:var(--muted);" id="chartSubtitle">Interactive comparison across 10 measured websites (Lower is better)</div>
           </div>
           <div class="btn-group">
-            <button class="tab-btn active" onclick="setChart('pageload', this)">Page Load Speed</button>
-            <button class="tab-btn" onclick="setChart('cpu', this)">CPU Usage</button>
-            <button class="tab-btn" onclick="setChart('memory', this)">Memory Usage</button>
-            <button class="tab-btn" onclick="setChart('startup', this)">Startup Speed</button>
+            <button class="tab-btn active" onclick="setChartMode('pageload', this)">🌐 Page Load by Website</button>
+            <button class="tab-btn" onclick="setChartMode('combined', this)">⚡ Combined System Resources (CPU / RAM / Startup)</button>
           </div>
         </div>
-        <div style="height:440px; position:relative;">
+
+        <!-- 1. Full-Width Page Load Bar Chart -->
+        <div id="chartContainerPageload" style="height:440px; position:relative;">
           <canvas id="benchmarkChart"></canvas>
+        </div>
+
+        <!-- 2. Combined 3-Column Resource Charts -->
+        <div id="chartContainerCombined" style="display:none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+          <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">🚀 Startup Speed (ms)</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Cold process initialization latency</div>
+            <div style="height:280px; position:relative;"><canvas id="chartStartupCombined"></canvas></div>
+          </div>
+          <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">⚡ CPU Utilization (%)</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Processor load during browsing</div>
+            <div style="height:280px; position:relative;"><canvas id="chartCpuCombined"></canvas></div>
+          </div>
+          <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">💾 Memory Footprint (MB)</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Physical RAM working set</div>
+            <div style="height:280px; position:relative;"><canvas id="chartMemCombined"></canvas></div>
+          </div>
         </div>
       </div>
     </div>
@@ -706,124 +725,210 @@
     tbody.innerHTML = rows.join('');
   }
 
-  function setChart(metric, btn) {
-    currentChartMetric = metric;
+  let chartMode = 'pageload';
+  let chartStartupInstance = null;
+  let chartCpuInstance = null;
+  let chartMemInstance = null;
+
+  function cleanSiteLabel(url) {
+    const raw = url.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '').toLowerCase();
+    const map = {
+      'google.com': 'Google',
+      'stackoverflow.com': 'StackOverflow',
+      'wikipedia.org': 'Wikipedia',
+      'youtube.com': 'YouTube',
+      'reddit.com': 'Reddit',
+      'microsoft.com': 'Microsoft',
+      'playwright.dev': 'Playwright',
+      'openai.com': 'OpenAI',
+      'github.com': 'GitHub',
+      'developer.mozilla.org': 'MDN Web',
+    };
+    return map[raw] || raw;
+  }
+
+  function setChartMode(mode, btn) {
+    chartMode = mode;
     Array.from(btn.parentElement.children).forEach(c => c.className = 'tab-btn');
     btn.className = 'tab-btn active';
-    renderChart();
+
+    if (mode === 'pageload') {
+      document.getElementById('chartContainerPageload').style.display = 'block';
+      document.getElementById('chartContainerCombined').style.display = 'none';
+      document.getElementById('chartTitle').innerText = 'Page Load Speed across Websites (ms)';
+      document.getElementById('chartSubtitle').innerText = 'Interactive comparison across 10 measured websites (Lower is better)';
+      renderChart();
+    } else {
+      document.getElementById('chartContainerPageload').style.display = 'none';
+      document.getElementById('chartContainerCombined').style.display = 'grid';
+      document.getElementById('chartTitle').innerText = 'Combined System Resources (Startup / CPU / RAM)';
+      document.getElementById('chartSubtitle').innerText = 'Multi-metric resource utilization and initialization latency comparison';
+      renderCombinedResourceCharts();
+    }
   }
 
   function renderChart() {
+    if (chartMode === 'combined') {
+      renderCombinedResourceCharts();
+      return;
+    }
+
     if (!benchmarkData || typeof Chart === 'undefined') return;
-    const ctx = document.getElementById("benchmarkChart").getContext("2d");
+    const ctx = document.getElementById("benchmarkChart")?.getContext("2d");
+    if (!ctx) return;
     if (chartInstance) chartInstance.destroy();
 
     const { summary, siteSummary } = benchmarkData;
     const browsers = Object.keys(summary);
     const theme = getThemeColors();
 
-    if (currentChartMetric === 'pageload') {
-      document.getElementById("chartTitle").innerText = "Page Load Speed across Websites (ms)";
-      const sites = Object.keys(siteSummary);
-      const shortLabels = sites.map(s => s.replace('https://', '').replace('www.', ''));
+    const sites = Object.keys(siteSummary);
+    const cleanLabels = sites.map(cleanSiteLabel);
 
-      const datasets = browsers.map(b => {
-        const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.7)', border: '#888' };
-        const series = sites.map(site => {
-          const stat = siteSummary[site]?.[b];
-          return stat ? Number(stat.mean.toFixed(0)) : 0;
-        });
-
-        return {
-          label: b,
-          data: series,
-          backgroundColor: bColor.bg,
-          borderColor: bColor.border,
-          borderWidth: 1.5,
-          borderRadius: 5,
-        };
+    const datasets = browsers.map(b => {
+      const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.7)', border: '#888' };
+      const series = sites.map(site => {
+        const stat = siteSummary[site]?.[b];
+        return stat ? Number(stat.mean.toFixed(0)) : 0;
       });
 
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: shortLabels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: 'Load Time (ms)', color: theme.text },
-              ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
-              grid: { color: theme.grid },
-            },
-            x: {
-              ticks: { color: theme.text, font: { family: 'Inter', size: 12 } },
-              grid: { display: false },
-            }
+      return {
+        label: b,
+        data: series,
+        backgroundColor: bColor.bg,
+        borderColor: bColor.border,
+        borderWidth: 1.5,
+        borderRadius: 5,
+      };
+    });
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: cleanLabels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Load Time (ms)', color: theme.text },
+            ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
+            grid: { color: theme.grid },
           },
-          plugins: {
-            legend: { labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } } },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ms`
-              }
+          x: {
+            ticks: {
+              color: theme.text,
+              font: { family: 'Inter', weight: 600, size: 11.5 },
+              maxRotation: 0,
+              minRotation: 0,
+              autoSkip: false,
+              padding: 8,
+            },
+            grid: { display: false },
+          }
+        },
+        plugins: {
+          legend: { labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ms`
             }
           }
         }
-      });
-    } else {
-      const metricMap = {
-        cpu: { title: "CPU Usage Comparison (%) — Lower is better", unit: "%", key: "cpu" },
-        memory: { title: "Memory Usage Comparison (MB) — Lower is better", unit: "MB", key: "memory" },
-        startup: { title: "Startup Speed Comparison (ms) — Lower is better", unit: "ms", key: "startup" },
-      };
+      }
+    });
+  }
 
-      const meta = metricMap[currentChartMetric];
-      document.getElementById("chartTitle").innerText = meta.title;
+  function renderCombinedResourceCharts() {
+    if (!benchmarkData || typeof Chart === 'undefined') return;
+    const { summary } = benchmarkData;
+    const browsers = Object.keys(summary);
+    const theme = getThemeColors();
 
-      const labels = browsers;
-      const data = browsers.map(b => Number(summary[b][meta.key].mean.toFixed(1)));
-      const bgColors = browsers.map(b => BROWSER_COLORS[b]?.bg || 'rgba(100,100,100,0.7)');
-      const borderColors = browsers.map(b => BROWSER_COLORS[b]?.border || '#888');
+    const startupCtx = document.getElementById("chartStartupCombined")?.getContext("2d");
+    const cpuCtx = document.getElementById("chartCpuCombined")?.getContext("2d");
+    const memCtx = document.getElementById("chartMemCombined")?.getContext("2d");
 
-      chartInstance = new Chart(ctx, {
+    if (chartStartupInstance) chartStartupInstance.destroy();
+    if (chartCpuInstance) chartCpuInstance.destroy();
+    if (chartMemInstance) chartMemInstance.destroy();
+
+    const bgColors = browsers.map(b => BROWSER_COLORS[b]?.bg || 'rgba(100,100,100,0.8)');
+    const borderColors = browsers.map(b => BROWSER_COLORS[b]?.border || '#888');
+
+    const commonOpts = (unit) => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: unit, color: theme.text },
+          ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 11 } },
+          grid: { color: theme.grid },
+        },
+        x: {
+          ticks: { color: theme.text, font: { family: 'Inter', weight: 600, size: 12 } },
+          grid: { display: false },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.raw} ${unit}`
+          }
+        }
+      }
+    });
+
+    if (startupCtx) {
+      chartStartupInstance = new Chart(startupCtx, {
         type: 'bar',
         data: {
-          labels,
+          labels: browsers,
           datasets: [{
-            label: meta.title,
-            data,
+            data: browsers.map(b => Number(summary[b].startup.mean.toFixed(0))),
             backgroundColor: bgColors,
             borderColor: borderColors,
             borderWidth: 1.5,
-            borderRadius: 7,
+            borderRadius: 6,
           }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: meta.unit, color: theme.text },
-              ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
-              grid: { color: theme.grid },
-            },
-            x: {
-              ticks: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } },
-              grid: { display: false },
-            }
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => ` ${ctx.raw} ${meta.unit}`
-              }
-            }
-          }
-        }
+        options: commonOpts('ms')
+      });
+    }
+
+    if (cpuCtx) {
+      chartCpuInstance = new Chart(cpuCtx, {
+        type: 'bar',
+        data: {
+          labels: browsers,
+          datasets: [{
+            data: browsers.map(b => Number(summary[b].cpu.mean.toFixed(1))),
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }]
+        },
+        options: commonOpts('%')
+      });
+    }
+
+    if (memCtx) {
+      chartMemInstance = new Chart(memCtx, {
+        type: 'bar',
+        data: {
+          labels: browsers,
+          datasets: [{
+            data: browsers.map(b => Number(summary[b].memory.mean.toFixed(0))),
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }]
+        },
+        options: commonOpts('MB')
       });
     }
   }
