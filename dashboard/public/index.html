@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Browser Performance — Live Telemetry</title>
+<script>
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
+</script>
+<link rel="stylesheet" href="/theme.css" />
+<script src="/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- Left Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">BrowserPerf</div>
+        <div class="brand-sub">Live Telemetry</div>
+      </div>
+    </div>
+
+    <div class="nav-group-title">Navigation</div>
+    <nav class="nav-links">
+      <a href="/" class="nav-item active">
+        <span>⚡</span>
+        <span>Live Telemetry</span>
+      </a>
+      <a href="/benchmark.html" class="nav-item">
+        <span>📊</span>
+        <span>Benchmark Scorecard</span>
+      </a>
+    </nav>
+
+    <div class="nav-group-title">System Status</div>
+    <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; margin:0 4px; font-size:12px; line-height:1.6; color:var(--muted);">
+      <div style="display:flex; justify-content:space-between;">
+        <span>Active Instances:</span>
+        <strong style="color:var(--text);" id="sidebarActiveCount">0</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:4px;">
+        <span>Sample Rate:</span>
+        <strong style="color:var(--text);">1.0 sec</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:4px;">
+        <span>Platform:</span>
+        <strong style="color:var(--text);">Windows OS</strong>
+      </div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:0 4px;">
+        <span>Theme</span>
+        <div class="theme-switch">
+          <button class="theme-switch-btn" data-theme-choice="light">Light</button>
+          <button class="theme-switch-btn" data-theme-choice="dark">Dark</button>
+        </div>
+      </div>
+      <div style="font-size:11px; color:var(--muted); font-family:var(--font-mono); padding:0 4px;">
+        WebSocket: Port 3000
+      </div>
+    </div>
+  </aside>
+
+  <!-- Workspace Area -->
+  <main class="workspace">
+
+    <!-- Header Bar -->
+    <div class="header-bar">
+      <div>
+        <h1 class="header-title">Live Telemetry Monitor</h1>
+        <div class="header-desc">Continuous real-time CPU, RAM, and network throughput telemetry while browsing</div>
+      </div>
+      <div>
+        <span class="status-banner" id="status">Connecting to server…</span>
+      </div>
+    </div>
+
+    <!-- Active Summary Bar -->
+    <div class="card card-purple" style="margin-bottom:18px;">
+      <div style="display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
+        <div>
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;">Active Instances</div>
+          <div class="kpi-main-number" id="activeCount" style="font-size:24px;">0</div>
+        </div>
+        <div style="flex:1; min-width:180px;">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Aggregate CPU Load</div>
+          <div style="height:44px; position:relative;">
+            <canvas id="sessionChart"></canvas>
+          </div>
+        </div>
+        <div style="min-width:220px;">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Recent Events</div>
+          <div id="eventLog" style="font-family:var(--font-mono); font-size:11.5px; line-height:1.5; color:var(--muted);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid of 3 Browser Cards -->
+    <div class="card-grid" id="grid"></div>
+
+    <p style="font-size:11.5px; color:var(--muted); font-family:var(--font-mono); margin-top:12px;">
+      ℹ️ CPU and RAM are sampled via OS process telemetry at 1-second intervals. Bandwidth is captured via response headers.
+    </p>
+
+  </main>
+</div>
+
+<script>
+const BROWSERS = ["Chrome", "Edge", "Firefox"];
+const BROWSER_COLOR = { Chrome: "#6366f1", Edge: "#0284c7", Firefox: "#f97316" };
+const BUFFER_SIZE = 45;
+
+function chartColorsForTheme(mode) {
+  return mode === "light"
+    ? { muted: "#64748b", faint: "#94a3b8", grid: "#edf2f7" }
+    : { muted: "#8d93a5", faint: "#555b6e", grid: "#1c2232" };
+}
+let chartColors = chartColorsForTheme(document.documentElement.getAttribute("data-theme") || "light");
+
+const state = {};
+const statusEl = document.getElementById("status");
+const eventLogEl = document.getElementById("eventLog");
+const activeCountEl = document.getElementById("activeCount");
+const sidebarActiveCountEl = document.getElementById("sidebarActiveCount");
+const recentEvents = [];
+
+function logEvent(text) {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  recentEvents.unshift(`<div>${time} — ${text}</div>`);
+  if (recentEvents.length > 3) recentEvents.pop();
+  eventLogEl.innerHTML = recentEvents.join("");
+}
+
+function updateActiveCount() {
+  const count = Object.values(state).filter((s) => s.running).length;
+  activeCountEl.textContent = count;
+  if (sidebarActiveCountEl) sidebarActiveCountEl.textContent = count;
+}
+
+function createInitialBuffer(defaultVal = 0) {
+  return Array(BUFFER_SIZE).fill(defaultVal);
+}
+
+function createInitialLabels() {
+  return Array(BUFFER_SIZE).fill("");
+}
+
+let wsConnected = false;
+const ws = new WebSocket(`ws://${location.host}`);
+
+ws.onopen = () => {
+  wsConnected = true;
+  statusEl.textContent = "● Connected (1s stream)";
+  statusEl.className = "status-banner connected";
+  BROWSERS.forEach((name) => {
+    if (!state[name].running) document.getElementById(`launch-${name}`).disabled = false;
+  });
+};
+
+ws.onclose = () => {
+  wsConnected = false;
+  statusEl.textContent = "○ Disconnected";
+  statusEl.className = "status-banner failed";
+  BROWSERS.forEach((name) => {
+    document.getElementById(`launch-${name}`).disabled = true;
+  });
+};
+
+ws.onerror = () => {
+  statusEl.textContent = "Server unreachable";
+  statusEl.className = "status-banner failed";
+};
+
+function renderPulseBar(elId, percent) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const segCount = 12;
+  const filled = Math.min(segCount, Math.round((percent / 100) * segCount));
+  let color = "var(--green)";
+  if (percent > 75) color = "var(--red)";
+  else if (percent > 40) color = "var(--amber)";
+
+  el.innerHTML = Array.from({ length: segCount })
+    .map((_, i) => {
+      const bg = i < filled ? color : "var(--panel-alt)";
+      return `<div class="seg" style="background:${bg}"></div>`;
+    })
+    .join("");
+}
+
+function makeCard(name) {
+  const color = BROWSER_COLOR[name];
+  const el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = `
+    <div class="browser-head">
+      <div class="browser-icon" style="background:${color}">${name[0]}</div>
+      <div>
+        <div class="browser-name">${name}</div>
+        <div><span class="status-dot" id="dot-${name}"></span><span class="status-label" id="statuslabel-${name}">idle</span></div>
+      </div>
+      <div class="sidebar-spacer"></div>
+      <button class="pill-btn primary" id="launch-${name}" onclick="launch('${name}')" disabled>Launch</button>
+      <button class="pill-btn danger" id="stop-${name}" onclick="stop('${name}')" disabled>Stop</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div style="font-size:12px; color:${color}">◉</div>
+        <div><div class="stat-value" id="cpu-${name}">–</div><div class="stat-label">CPU</div></div>
+      </div>
+      <div class="stat">
+        <div style="font-size:12px; color:var(--green)">▣</div>
+        <div><div class="stat-value" id="mem-${name}">–</div><div class="stat-label">RAM</div></div>
+      </div>
+      <div class="stat">
+        <div style="font-size:12px; color:var(--amber)">◷</div>
+        <div><div class="stat-value" id="runtime-${name}">–</div><div class="stat-label">Runtime</div></div>
+      </div>
+      <div class="stat">
+        <div style="font-size:12px; color:var(--blue)">↕</div>
+        <div><div class="stat-value" id="bw-${name}">–</div><div class="stat-label">Network</div></div>
+      </div>
+    </div>
+
+    <div class="pulse-bar" id="pulse-${name}"></div>
+    <div class="url-line" id="url-${name}">not running</div>
+
+    <!-- Dedicated CPU Sparkline -->
+    <div class="chart-label">CPU Load (%)</div>
+    <div style="height:70px; position:relative; margin-bottom:6px;">
+      <canvas id="cpu-chart-${name}"></canvas>
+    </div>
+
+    <!-- Dedicated Memory Sparkline -->
+    <div class="chart-label">Memory Footprint (MB)</div>
+    <div style="height:70px; position:relative; margin-bottom:6px;">
+      <canvas id="mem-chart-${name}"></canvas>
+    </div>
+
+    <!-- Dedicated Network Sparkline -->
+    <div class="chart-label">Network Rate (KB/s)</div>
+    <div style="height:70px; position:relative;">
+      <canvas id="netchart-${name}"></canvas>
+    </div>
+  `;
+  document.getElementById("grid").appendChild(el);
+
+  let cpuChart = null;
+  let memChart = null;
+  let netChart = null;
+
+  try {
+    const commonChartOpts = {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      elements: { point: { radius: 0, hitRadius: 4 } },
+      scales: {
+        x: { display: false },
+        y: {
+          beginAtZero: true,
+          ticks: { color: chartColors.faint, font: { size: 9, family: 'JetBrains Mono' } },
+          grid: { color: chartColors.grid, drawBorder: false }
+        }
+      }
+    };
+
+    const cpuCtx = document.getElementById(`cpu-chart-${name}`).getContext("2d");
+    cpuChart = new Chart(cpuCtx, {
+      type: "line",
+      data: {
+        labels: createInitialLabels(),
+        datasets: [{
+          data: createInitialBuffer(0),
+          borderColor: color,
+          borderWidth: 2,
+          tension: 0.35,
+          fill: true,
+          backgroundColor: `${color}18`,
+        }]
+      },
+      options: {
+        ...commonChartOpts,
+        scales: {
+          ...commonChartOpts.scales,
+          y: {
+            beginAtZero: true,
+            suggestedMax: 10,
+            ticks: {
+              stepSize: 5,
+              color: chartColors.faint,
+              font: { size: 9, family: 'JetBrains Mono' }
+            },
+            grid: { color: chartColors.grid, drawBorder: false }
+          }
+        }
+      }
+    });
+
+    const memCtx = document.getElementById(`mem-chart-${name}`).getContext("2d");
+    memChart = new Chart(memCtx, {
+      type: "line",
+      data: {
+        labels: createInitialLabels(),
+        datasets: [{
+          data: createInitialBuffer(0),
+          borderColor: "#10b981",
+          borderWidth: 2,
+          tension: 0.35,
+          fill: true,
+          backgroundColor: "rgba(16, 185, 129, 0.10)",
+        }]
+      },
+      options: commonChartOpts
+    });
+
+    const netCtx = document.getElementById(`netchart-${name}`).getContext("2d");
+    netChart = new Chart(netCtx, {
+      type: "line",
+      data: {
+        labels: createInitialLabels(),
+        datasets: [{
+          data: createInitialBuffer(0),
+          borderColor: "#f59e0b",
+          borderWidth: 2,
+          tension: 0.35,
+          fill: true,
+          backgroundColor: "rgba(245, 158, 11, 0.10)",
+        }]
+      },
+      options: commonChartOpts
+    });
+  } catch (err) {
+    console.warn(`Charts initialization failed for ${name}:`, err);
+  }
+
+  state[name] = { cpuChart, memChart, netChart, running: false };
+}
+
+BROWSERS.forEach(makeCard);
+if (wsConnected) {
+  BROWSERS.forEach((name) => (document.getElementById(`launch-${name}`).disabled = false));
+}
+
+const sessionCtx = document.getElementById("sessionChart").getContext("2d");
+let sessionChart = null;
+try {
+  sessionChart = new Chart(sessionCtx, {
+    type: "line",
+    data: {
+      labels: createInitialLabels(),
+      datasets: [{
+        data: createInitialBuffer(0),
+        borderColor: "#818cf8",
+        borderWidth: 2,
+        tension: 0.35,
+        fill: true,
+        backgroundColor: "rgba(99, 102, 241, 0.15)"
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false, beginAtZero: true, max: 100 } }
+    }
+  });
+} catch (err) {
+  console.warn("Session sparkline unavailable:", err);
+}
+
+const latestCpu = {};
+
+function fmtRuntime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}m ${s}s`;
+}
+
+function setRunning(name, running) {
+  state[name].running = running;
+  document.getElementById(`launch-${name}`).disabled = running || !wsConnected;
+  document.getElementById(`stop-${name}`).disabled = !running;
+  document.getElementById(`dot-${name}`).classList.toggle("live", running);
+  document.getElementById(`statuslabel-${name}`).textContent = running ? "live" : "idle";
+  updateActiveCount();
+}
+
+function pushRollingValue(chart, val) {
+  if (!chart) return;
+  const ds = chart.data.datasets[0];
+  ds.data.push(val);
+  ds.data.shift();
+  chart.update("none");
+}
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+
+  if (msg.type === "init") {
+    msg.running.forEach((name) => setRunning(name, true));
+  }
+
+  if (msg.type === "launched") {
+    setRunning(msg.browser, true);
+    logEvent(`Launched ${msg.browser}`);
+  }
+
+  if (msg.type === "closed") {
+    setRunning(msg.browser, false);
+    delete latestCpu[msg.browser];
+    logEvent(`Closed ${msg.browser}`);
+    ["cpu", "mem", "runtime", "bw"].forEach((k) => {
+      document.getElementById(`${k}-${msg.browser}`).textContent = "–";
+    });
+    document.getElementById(`url-${msg.browser}`).textContent = "not running";
+    renderPulseBar(`pulse-${msg.browser}`, 0);
+  }
+
+  if (msg.type === "error") {
+    alert(`${msg.browser}: ${msg.message}`);
+    setRunning(msg.browser, false);
+    logEvent(`${msg.browser} error: ${msg.message}`);
+  }
+
+  if (msg.type === "stats") {
+    const { browser, cpuPercent, memoryMB, runtimeSec, bandwidthRateKBs, currentUrl } = msg;
+
+    document.getElementById(`cpu-${browser}`).textContent = `${cpuPercent}%`;
+    document.getElementById(`mem-${browser}`).textContent = `${memoryMB} MB`;
+    document.getElementById(`runtime-${browser}`).textContent = fmtRuntime(runtimeSec);
+    document.getElementById(`bw-${browser}`).textContent = `${bandwidthRateKBs} KB/s`;
+    if (currentUrl) {
+      const urlEl = document.getElementById(`url-${browser}`);
+      urlEl.textContent = currentUrl;
+      urlEl.title = currentUrl;
+    }
+
+    renderPulseBar(`pulse-${browser}`, Number(cpuPercent));
+
+    const s = state[browser];
+    if (s.cpuChart) pushRollingValue(s.cpuChart, Number(cpuPercent));
+    if (s.memChart) pushRollingValue(s.memChart, Number(memoryMB));
+    if (s.netChart) pushRollingValue(s.netChart, Number(bandwidthRateKBs));
+
+    latestCpu[browser] = Number(cpuPercent);
+    const combined = Object.values(latestCpu).reduce((a, b) => a + b, 0);
+    if (sessionChart) pushRollingValue(sessionChart, combined);
+  }
+};
+
+function launch(name) {
+  if (!wsConnected) return;
+  ws.send(JSON.stringify({ action: "launch", browser: name }));
+}
+
+function stop(name) {
+  ws.send(JSON.stringify({ action: "stop", browser: name }));
+}
+
+function repaintChartTheme(mode) {
+  chartColors = chartColorsForTheme(mode);
+
+  const charts = [];
+  Object.values(state).forEach((s) => {
+    if (s.cpuChart) charts.push(s.cpuChart);
+    if (s.memChart) charts.push(s.memChart);
+    if (s.netChart) charts.push(s.netChart);
+  });
+  if (sessionChart) charts.push(sessionChart);
+
+  charts.forEach((c) => {
+    Object.values(c.options.scales || {}).forEach((scale) => {
+      if (scale.ticks) scale.ticks.color = chartColors.faint;
+      if (scale.grid && "color" in scale.grid) scale.grid.color = chartColors.grid;
+    });
+    c.update("none");
+  });
+}
+window.onThemeChange = repaintChartTheme;
+</script>
+<script src="/theme-toggle.js"></script>
+</body>
+</html>

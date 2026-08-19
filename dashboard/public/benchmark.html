@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Browser Performance — Benchmark Evaluation</title>
+<script>
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
+</script>
+<link rel="stylesheet" href="/theme.css" />
+<script src="/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- Left Sidebar Navigation Column -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">BrowserPerf</div>
+        <div class="brand-sub">Evaluation Suite</div>
+      </div>
+    </div>
+
+    <div class="nav-group-title">Navigation Views</div>
+    <nav class="nav-links">
+      <button class="nav-item active" onclick="switchPageView('overview', this)">
+        <span>📊</span>
+        <span>Overview Scorecard</span>
+      </button>
+      <button class="nav-item" onclick="switchPageView('charts', this)">
+        <span>📈</span>
+        <span>Visual Charts</span>
+      </button>
+      <button class="nav-item" onclick="switchPageView('headtohead', this)">
+        <span>⚖️</span>
+        <span>The Ratio Game (Diff)</span>
+      </button>
+      <button class="nav-item" onclick="switchPageView('table', this)">
+        <span>📋</span>
+        <span>Comparison Table</span>
+      </button>
+      <button class="nav-item" onclick="switchPageView('logs', this)">
+        <span>📑</span>
+        <span>Raw Observation Logs</span>
+      </button>
+      <a href="/" class="nav-item">
+        <span>⚡</span>
+        <span>Live Telemetry</span>
+      </a>
+    </nav>
+
+    <div class="nav-group-title">Benchmark Run</div>
+    <div style="padding: 0 4px 10px 4px;">
+      <select id="runSelect" class="theme-select" style="width:100%; font-size:13px;"></select>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; color:var(--muted); padding:0 4px;">
+        <span>Theme</span>
+        <div class="theme-switch">
+          <button class="theme-switch-btn" data-theme-choice="light">Light</button>
+          <button class="theme-switch-btn" data-theme-choice="dark">Dark</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Workspace -->
+  <main class="workspace">
+
+    <!-- Top Header -->
+    <div class="header-bar">
+      <div>
+        <h1 class="header-title" id="pageHeaderTitle">Benchmark Overview</h1>
+        <div class="header-desc" id="pageHeaderDesc">Executive summary and multi-dimensional performance rankings across tested browsers</div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="pill-tag pill-purple" id="runBadge">RUN: LOADING...</span>
+        <span class="pill-tag pill-gray" id="testRunsCount">10 sample iterations</span>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE 1: EXECUTIVE OVERVIEW SCORECARD VIEW -->
+    <!-- ================================================================= -->
+    <div id="view-overview" class="page-view active">
+      <!-- Winner Hero Card -->
+      <div class="hero-winner-card">
+        <div>
+          <div class="winner-badge">Overall Winner</div>
+          <div class="winner-heading" id="winnerHeadline">Analyzing Benchmark Results...</div>
+          <div class="winner-text" id="winnerText">
+            Evaluating performance distributions across startup speed, memory usage, CPU load, and web responsiveness.
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;" id="winnerChips"></div>
+      </div>
+
+      <!-- 4 Scaled KPI Cards Grid -->
+      <div class="kpi-grid">
+
+        <!-- 1. Startup Speed -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-label">Startup Speed</span>
+            <span class="kpi-badge win" id="startupWinnerBadge">Fastest: Chrome</span>
+          </div>
+          <div class="kpi-value-row">
+            <div class="kpi-main-number" id="startupMainVal">—</div>
+            <div class="kpi-unit">ms</div>
+          </div>
+          <div class="kpi-subtext" id="startupSubtext">Cold process initialization latency</div>
+          <div class="mini-compare-list" id="startupCompareList"></div>
+        </div>
+
+        <!-- 2. CPU Usage -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-label">CPU Efficiency</span>
+            <span class="kpi-badge win" id="cpuWinnerBadge">Lowest: Firefox</span>
+          </div>
+          <div class="kpi-value-row">
+            <div class="kpi-main-number" id="cpuMainVal">—</div>
+            <div class="kpi-unit">%</div>
+          </div>
+          <div class="kpi-subtext" id="cpuSubtext">Multi-core processor utilization</div>
+          <div class="mini-compare-list" id="cpuCompareList"></div>
+        </div>
+
+        <!-- 3. Memory Footprint -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-label">Memory Footprint</span>
+            <span class="kpi-badge win" id="memWinnerBadge">Lowest: Edge</span>
+          </div>
+          <div class="kpi-value-row">
+            <div class="kpi-main-number" id="memMainVal">—</div>
+            <div class="kpi-unit">MB</div>
+          </div>
+          <div class="kpi-subtext" id="memSubtext">Physical working set RAM allocated</div>
+          <div class="mini-compare-list" id="memCompareList"></div>
+        </div>
+
+        <!-- 4. Responsiveness -->
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-label">Web Responsiveness</span>
+            <span class="kpi-badge win" id="speedWinnerBadge">Top: Firefox</span>
+          </div>
+          <div class="kpi-value-row">
+            <div class="kpi-main-number" id="speedMainVal">—</div>
+            <div class="kpi-unit">pts</div>
+          </div>
+          <div class="kpi-subtext" id="speedSubtext">Speedometer 3.0 benchmark score</div>
+          <div class="mini-compare-list" id="speedCompareList"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE 2: DEDICATED VISUAL CHARTS VIEW -->
+    <!-- ================================================================= -->
+    <div id="view-charts" class="page-view">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);" id="chartTitle">Page Load Speed across Websites</div>
+            <div style="font-size:13px; color:var(--muted);">Interactive comparison across measured websites and metrics (Lower is better)</div>
+          </div>
+          <div class="btn-group">
+            <button class="tab-btn active" onclick="setChart('pageload', this)">Page Load Speed</button>
+            <button class="tab-btn" onclick="setChart('cpu', this)">CPU Usage</button>
+            <button class="tab-btn" onclick="setChart('memory', this)">Memory Usage</button>
+            <button class="tab-btn" onclick="setChart('startup', this)">Startup Speed</button>
+          </div>
+        </div>
+        <div style="height:440px; position:relative;">
+          <canvas id="benchmarkChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE 3: THE RATIO GAME & HEAD-TO-HEAD DIFF VIEW (Raj Jain Ch. 11.5) -->
+    <!-- ================================================================= -->
+    <div id="view-headtohead" class="page-view">
+      
+      <!-- The Ratio Game Explanatory Hero Card -->
+      <div class="hero-winner-card" style="margin-bottom:20px;">
+        <div>
+          <div class="winner-badge">Raj Jain Methodology — Ch. 11.5</div>
+          <div class="winner-heading">The Ratio Game Analysis</div>
+          <div class="winner-text">
+            Normalizes performance metrics against a chosen baseline browser. Using <strong>Geometric Mean Ratios</strong> prevents baseline bias and conclusively reveals which browser is mathematically superior overall (<strong>Ratio &gt; 1.00x</strong> indicates superior performance over baseline).
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <label style="font-size:13px; font-weight:700; color:var(--text);">Baseline Browser:</label>
+          <select id="ratioBaselineSelect" class="theme-select" onchange="renderRatioGame()" style="min-width:140px; font-weight:700;"></select>
+        </div>
+      </div>
+
+      <!-- Ratio Game Scorecards Grid -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:17px; font-weight:800; color:var(--text);">Normalized Ratio Performance Matrix</div>
+          <div style="font-size:13px; color:var(--muted);">All metrics normalized to chosen baseline (<strong style="color:var(--text);">&gt; 1.00x</strong> = superior performance, <strong style="color:var(--text);">&lt; 1.00x</strong> = inferior)</div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Target Browser</th>
+                <th>Startup Speed Ratio</th>
+                <th>CPU Efficiency Ratio</th>
+                <th>RAM Efficiency Ratio</th>
+                <th>Page Load Ratio</th>
+                <th>Speedometer Ratio</th>
+                <th>Overall GeoMean Ratio</th>
+                <th>Verdict vs Baseline</th>
+              </tr>
+            </thead>
+            <tbody id="ratioGameTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pairwise Metric Differentials -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:17px; font-weight:800; color:var(--text);">Pairwise Metric Differentials</div>
+            <div style="font-size:13px; color:var(--muted);">Direct head-to-head advantage percentage across specific metrics</div>
+          </div>
+          <select id="headToHeadMetricSelect" class="theme-select" onchange="renderHeadToHead()">
+            <option value="startup">Startup Speed (ms)</option>
+            <option value="cpu">CPU Usage (%)</option>
+            <option value="memory">Memory Usage (MB)</option>
+            <option value="pageload">Page Load Time (ms)</option>
+            <option value="speedometer">Speedometer Responsiveness (pts)</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Comparison Pair</th>
+                <th>Browser A</th>
+                <th>Browser B</th>
+                <th>Advantage / Winner</th>
+                <th>Performance Delta</th>
+                <th>Takeaway Verdict</th>
+              </tr>
+            </thead>
+            <tbody id="headToHeadBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE 4: DEDICATED COMPARISON TABLE VIEW -->
+    <!-- ================================================================= -->
+    <div id="view-table" class="page-view">
+      <div class="card">
+        <div style="margin-bottom:20px;">
+          <div style="font-size:18px; font-weight:800; color:var(--text);">Side-by-Side Performance Comparison</div>
+          <div style="font-size:13px; color:var(--muted);">Aggregated metrics and performance rankings across all test categories</div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Browser</th>
+                <th>Startup Speed</th>
+                <th>CPU Usage</th>
+                <th>RAM Usage</th>
+                <th>Avg Page Load</th>
+                <th>Tail Latency (P90)</th>
+                <th>Responsiveness</th>
+                <th>Overall Rank</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- PAGE 5: DEDICATED RAW LOGS VIEW -->
+    <!-- ================================================================= -->
+    <div id="view-logs" class="page-view">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);">Raw Observation Logs</div>
+            <div style="font-size:13px; color:var(--muted);">Inspect logged sample entries from benchmark runs</div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div class="btn-group">
+              <button class="tab-btn active" onclick="switchCsvTab('pageloads', this)">Page Loads</button>
+              <button class="tab-btn" onclick="switchCsvTab('metrics', this)">System Metrics</button>
+              <button class="tab-btn" onclick="switchCsvTab('speedometer', this)">Speedometer</button>
+            </div>
+            <input type="text" id="logFilter" class="theme-input" placeholder="Search logs..." onkeyup="filterLogs()" style="width:200px;" />
+          </div>
+        </div>
+        <div class="table-scroll" style="max-height:480px;">
+          <table id="rawLogsTable">
+            <thead><tr id="rawHead"></tr></thead>
+            <tbody id="rawBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/theme-toggle.js"></script>
+<script>
+  const BROWSER_COLORS = {
+    Chrome: { bg: 'rgba(99, 102, 241, 0.85)', border: '#6366f1' },
+    Edge: { bg: 'rgba(2, 132, 199, 0.85)', border: '#0284c7' },
+    Firefox: { bg: 'rgba(249, 115, 22, 0.85)', border: '#f97316' },
+  };
+
+  let benchmarkData = null;
+  let chartInstance = null;
+  let currentChartMetric = 'pageload';
+  let currentCsv = 'pageloads';
+  let rawCsvData = {};
+
+  const pageMeta = {
+    overview: { title: "Benchmark Overview", desc: "Executive summary and multi-dimensional performance rankings across tested browsers" },
+    charts: { title: "Visual Charts", desc: "Interactive latency and resource consumption charts across websites" },
+    headtohead: { title: "The Ratio Game (Head-to-Head)", desc: "Normalized performance ratios and geometric advantage analysis (Raj Jain Ch. 11.5)" },
+    table: { title: "Comparison Table", desc: "Comprehensive side-by-side metric matrix across all tested browsers" },
+    logs: { title: "Raw Observation Logs", desc: "Inspection records and exact metric logs from benchmark CSVs" },
+  };
+
+  function switchPageView(viewId, btn) {
+    document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+    const target = document.getElementById(`view-${viewId}`);
+    if (target) target.classList.add('active');
+    if (btn) btn.classList.add('active');
+
+    if (pageMeta[viewId]) {
+      document.getElementById('pageHeaderTitle').innerText = pageMeta[viewId].title;
+      document.getElementById('pageHeaderDesc').innerText = pageMeta[viewId].desc;
+    }
+
+    if (viewId === 'charts') {
+      setTimeout(renderChart, 50);
+    }
+    if (viewId === 'headtohead') {
+      renderRatioGame();
+      renderHeadToHead();
+    }
+
+    window.location.hash = viewId;
+  }
+
+  function getThemeColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      text: isDark ? '#94a3b8' : '#64748b',
+      grid: isDark ? '#1c2232' : '#edf2f7',
+    };
+  }
+
+  async function init() {
+    const res = await fetch("/api/runs");
+    const { runs } = await res.json();
+    const select = document.getElementById("runSelect");
+
+    if (!runs || !runs.length) {
+      document.getElementById("winnerHeadline").innerText = "No benchmark runs found";
+      document.getElementById("winnerText").innerText = "Run `npm run bench` to generate your first benchmark data.";
+      return;
+    }
+
+    select.innerHTML = runs.map(r => `<option value="${r}">${r}</option>`).join("");
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('dir') || runs[0];
+    select.value = runs.includes(requested) ? requested : runs[0];
+
+    select.addEventListener('change', () => loadRun(select.value));
+    await loadRun(select.value);
+
+    const initialHash = window.location.hash.replace('#', '');
+    if (initialHash && document.getElementById(`view-${initialHash}`)) {
+      const matchBtn = Array.from(document.querySelectorAll('.nav-item')).find(b => b.getAttribute('onclick')?.includes(initialHash));
+      switchPageView(initialHash, matchBtn);
+    }
+  }
+
+  async function loadRun(dir) {
+    try {
+      const res = await fetch(`/api/benchmark?dir=${encodeURIComponent(dir)}`);
+      const { data, dir: loadedDir } = await res.json();
+      benchmarkData = data;
+      rawCsvData = data.raw || {};
+
+      document.getElementById("runBadge").innerText = `RUN: ${loadedDir}`;
+      
+      populateRatioBaselineSelect();
+      renderOverview(data);
+      renderCards(data.summary);
+      renderChart();
+      renderRatioGame();
+      renderHeadToHead();
+      renderTable(data.summary);
+      renderLogs(currentCsv);
+
+      const url = new URL(window.location);
+      url.searchParams.set('dir', loadedDir);
+      window.history.replaceState({}, '', url);
+    } catch (err) {
+      console.error("Failed to load run:", err);
+    }
+  }
+
+  function populateRatioBaselineSelect() {
+    if (!benchmarkData) return;
+    const browsers = Object.keys(benchmarkData.summary);
+    const select = document.getElementById("ratioBaselineSelect");
+    if (!select) return;
+    const current = select.value || browsers[0];
+    select.innerHTML = browsers.map(b => `<option value="${b}">${b}</option>`).join('');
+    select.value = browsers.includes(current) ? current : browsers[0];
+  }
+
+  function renderOverview(data) {
+    const { summary } = data;
+    const browsers = Object.keys(summary);
+    if (!browsers.length) return;
+
+    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
+    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
+    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
+
+    const wins = {};
+    browsers.forEach(b => wins[b] = 0);
+    wins[bestStartup]++;
+    wins[bestCpu]++;
+    wins[bestMem]++;
+
+    const overallWinner = [...browsers].sort((a,b) => wins[b] - wins[a])[0];
+
+    document.getElementById("winnerHeadline").innerText = `${overallWinner} is the Top Performer Overall`;
+    document.getElementById("winnerText").innerHTML = `
+      <strong>${overallWinner}</strong> achieved the optimal balance of fast execution and system efficiency.
+      It demonstrated the fastest cold startup speed (${summary[bestStartup].startup.mean.toFixed(0)} ms) and solid resource utilization.
+    `;
+
+    document.getElementById("winnerChips").innerHTML = `
+      <span class="pill-tag pill-green">🚀 Fastest Startup: ${bestStartup}</span>
+      <span class="pill-tag pill-blue">⚡ Lowest CPU: ${bestCpu}</span>
+      <span class="pill-tag pill-purple">💾 Lowest RAM: ${bestMem}</span>
+    `;
+
+    const sampleN = summary[overallWinner].startup.n || 10;
+    document.getElementById("testRunsCount").innerText = `${sampleN} sample iterations`;
+  }
+
+  function renderCards(summary) {
+    const browsers = Object.keys(summary);
+    if (!browsers.length) return;
+
+    const buildMiniCompare = (key, unit, isMaxBetter = false) => {
+      const sorted = [...browsers].sort((a, b) =>
+        isMaxBetter ? summary[b][key].mean - summary[a][key].mean : summary[a][key].mean - summary[b][key].mean
+      );
+      return sorted.map((b, idx) => {
+        const s = summary[b][key];
+        if (!s || s.n === 0) return '';
+        const rank = idx === 0 ? '👑 ' : `#${idx+1} `;
+        return `
+          <div class="compare-row">
+            <span class="compare-name">${rank}${b}</span>
+            <span class="compare-val">${s.mean.toFixed(1)} ${unit}</span>
+          </div>
+        `;
+      }).join('');
+    };
+
+    // 1. Startup Speed
+    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
+    const s = summary[bestStartup].startup;
+    document.getElementById("startupWinnerBadge").innerText = `Fastest: ${bestStartup}`;
+    document.getElementById("startupMainVal").innerText = s.mean.toFixed(0);
+    document.getElementById("startupCompareList").innerHTML = buildMiniCompare('startup', 'ms');
+
+    // 2. CPU Usage
+    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
+    const c = summary[bestCpu].cpu;
+    document.getElementById("cpuWinnerBadge").innerText = `Lowest: ${bestCpu}`;
+    document.getElementById("cpuMainVal").innerText = c.mean.toFixed(1);
+    document.getElementById("cpuCompareList").innerHTML = buildMiniCompare('cpu', '%');
+
+    // 3. Memory Usage
+    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
+    const m = summary[bestMem].memory;
+    document.getElementById("memWinnerBadge").innerText = `Lowest: ${bestMem}`;
+    document.getElementById("memMainVal").innerText = m.mean.toFixed(0);
+    document.getElementById("memCompareList").innerHTML = buildMiniCompare('memory', 'MB');
+
+    // 4. Speedometer Responsiveness
+    const bestSpeed = [...browsers].sort((a,b) => summary[b].speedometer.geoMean - summary[a].speedometer.geoMean)[0];
+    const sp = summary[bestSpeed].speedometer;
+    if (sp && sp.n > 0) {
+      document.getElementById("speedWinnerBadge").innerText = `Highest: ${bestSpeed}`;
+      document.getElementById("speedMainVal").innerText = sp.geoMean.toFixed(1);
+      document.getElementById("speedCompareList").innerHTML = buildMiniCompare('speedometer', 'pts', true);
+    } else {
+      document.getElementById("speedMainVal").innerText = "—";
+      document.getElementById("speedCompareList").innerHTML = "<div class='muted' style='font-size:12px;'>No benchmark data</div>";
+    }
+  }
+
+  // =========================================================================
+  // THE RATIO GAME IMPLEMENTATION (Raj Jain Ch. 11.5)
+  // =========================================================================
+  function renderRatioGame() {
+    if (!benchmarkData) return;
+    const summary = benchmarkData.summary;
+    const browsers = Object.keys(summary);
+    const baseline = document.getElementById("ratioBaselineSelect")?.value || browsers[0];
+    const tbody = document.getElementById("ratioGameTableBody");
+    if (!tbody || !summary[baseline]) return;
+
+    const baseData = summary[baseline];
+
+    const rows = browsers.map(target => {
+      const isBase = target === baseline;
+      const tData = summary[target];
+
+      // For Lower-is-Better metrics (Startup, CPU, RAM, PageLoad):
+      // Ratio = Baseline / Target (> 1.00x means target is faster/better)
+      const rStartup = tData.startup.mean > 0 ? (baseData.startup.mean / tData.startup.mean) : 1;
+      const rCpu = tData.cpu.mean > 0 ? (baseData.cpu.mean / tData.cpu.mean) : 1;
+      const rMem = tData.memory.mean > 0 ? (baseData.memory.mean / tData.memory.mean) : 1;
+      const rLoad = tData.pageload.mean > 0 ? (baseData.pageload.mean / tData.pageload.mean) : 1;
+
+      // For Higher-is-Better metrics (Speedometer):
+      // Ratio = Target / Baseline (> 1.00x means target scores higher)
+      const spBase = baseData.speedometer.geoMean || baseData.speedometer.mean || 1;
+      const spTarget = tData.speedometer.geoMean || tData.speedometer.mean || 1;
+      const rSpeed = spBase > 0 ? (spTarget / spBase) : 1;
+
+      const ratios = [rStartup, rCpu, rMem, rLoad];
+      if (tData.speedometer.n > 0) ratios.push(rSpeed);
+
+      // Geometric Mean of all ratios (Raj Jain Ch. 11.5)
+      const logSum = ratios.reduce((acc, r) => acc + Math.log(r > 0 ? r : 1), 0);
+      const geoMeanRatio = Math.exp(logSum / ratios.length);
+
+      const fmtRatio = (r) => {
+        if (isBase) return `<span class="mono" style="color:var(--muted);">1.00x</span>`;
+        if (r >= 1.05) return `<span class="pill-tag pill-green">${r.toFixed(2)}x (▲ +${((r-1)*100).toFixed(0)}%)</span>`;
+        if (r <= 0.95) return `<span class="pill-tag pill-amber">${r.toFixed(2)}x (▼ -${((1-r)*100).toFixed(0)}%)</span>`;
+        return `<span class="mono" style="color:var(--muted);">${r.toFixed(2)}x (Par)</span>`;
+      };
+
+      let verdict;
+      if (isBase) {
+        verdict = `<span class="pill-tag pill-gray">Baseline Reference</span>`;
+      } else if (geoMeanRatio >= 1.05) {
+        verdict = `<span class="pill-tag pill-green">👑 ${((geoMeanRatio - 1) * 100).toFixed(0)}% Superior Overall</span>`;
+      } else if (geoMeanRatio <= 0.95) {
+        verdict = `<span class="pill-tag pill-amber">⚠️ ${((1 - geoMeanRatio) * 100).toFixed(0)}% Inferior Overall</span>`;
+      } else {
+        verdict = `<span class="pill-tag pill-blue">≈ Equivalent (±5%)</span>`;
+      }
+
+      return `
+        <tr>
+          <td><strong>${target}</strong> ${isBase ? '<span style="font-size:11px; color:var(--muted);">(Baseline)</span>' : ''}</td>
+          <td>${fmtRatio(rStartup)}</td>
+          <td>${fmtRatio(rCpu)}</td>
+          <td>${fmtRatio(rMem)}</td>
+          <td>${fmtRatio(rLoad)}</td>
+          <td>${fmtRatio(rSpeed)}</td>
+          <td class="mono" style="font-size:15px; font-weight:800; color:${geoMeanRatio >= 1 ? 'var(--green)' : 'var(--amber)'};">${geoMeanRatio.toFixed(2)}x</td>
+          <td>${verdict}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = rows.join('');
+  }
+
+  function renderHeadToHead() {
+    if (!benchmarkData) return;
+    const metric = document.getElementById("headToHeadMetricSelect")?.value || 'startup';
+    const isHigherBetter = metric === 'speedometer';
+    const unitMap = { startup: 'ms', cpu: '%', memory: 'MB', pageload: 'ms', speedometer: 'pts' };
+    const unit = unitMap[metric] || '';
+
+    const tbody = document.getElementById("headToHeadBody");
+    const summary = benchmarkData.summary;
+    const browsers = Object.keys(summary);
+    if (!tbody || browsers.length < 2) return;
+
+    const pairs = [];
+    for (let i = 0; i < browsers.length; i++) {
+      for (let j = i + 1; j < browsers.length; j++) {
+        const b1 = browsers[i];
+        const b2 = browsers[j];
+        const val1 = isHigherBetter ? summary[b1][metric].geoMean : summary[b1][metric].mean;
+        const val2 = isHigherBetter ? summary[b2][metric].geoMean : summary[b2][metric].mean;
+        const diff = Math.abs(val1 - val2);
+        const winner = isHigherBetter ? (val1 >= val2 ? b1 : b2) : (val1 <= val2 ? b1 : b2);
+        const baseline = isHigherBetter ? Math.min(val1, val2) : Math.max(val1, val2);
+        const pct = baseline > 0 ? ((diff / baseline) * 100).toFixed(0) : '0';
+
+        pairs.push({
+          b1, b2, val1, val2, diff, winner, pct,
+          verdict: `${winner} is ${pct}% ${isHigherBetter ? 'faster' : 'more efficient'} than ${winner === b1 ? b2 : b1}`
+        });
+      }
+    }
+
+    tbody.innerHTML = pairs.map(p => `
+      <tr>
+        <td><strong>${p.b1}</strong> vs <strong>${p.b2}</strong></td>
+        <td class="mono">${p.val1.toFixed(1)} ${unit}</td>
+        <td class="mono">${p.val2.toFixed(1)} ${unit}</td>
+        <td><span class="pill-tag pill-green">👑 ${p.winner}</span></td>
+        <td class="mono" style="font-weight:700;">${p.diff.toFixed(1)} ${unit} (${p.pct}%)</td>
+        <td style="color:var(--text); font-size:13px;">${p.verdict}</td>
+      </tr>
+    `).join('');
+  }
+
+  function setChart(metric, btn) {
+    currentChartMetric = metric;
+    Array.from(btn.parentElement.children).forEach(c => c.className = 'tab-btn');
+    btn.className = 'tab-btn active';
+    renderChart();
+  }
+
+  function renderChart() {
+    if (!benchmarkData || typeof Chart === 'undefined') return;
+    const ctx = document.getElementById("benchmarkChart").getContext("2d");
+    if (chartInstance) chartInstance.destroy();
+
+    const { summary, siteSummary } = benchmarkData;
+    const browsers = Object.keys(summary);
+    const theme = getThemeColors();
+
+    if (currentChartMetric === 'pageload') {
+      document.getElementById("chartTitle").innerText = "Page Load Speed across Websites (ms)";
+      const sites = Object.keys(siteSummary);
+      const shortLabels = sites.map(s => s.replace('https://', '').replace('www.', ''));
+
+      const datasets = browsers.map(b => {
+        const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.7)', border: '#888' };
+        const series = sites.map(site => {
+          const stat = siteSummary[site]?.[b];
+          return stat ? Number(stat.mean.toFixed(0)) : 0;
+        });
+
+        return {
+          label: b,
+          data: series,
+          backgroundColor: bColor.bg,
+          borderColor: bColor.border,
+          borderWidth: 1.5,
+          borderRadius: 5,
+        };
+      });
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: shortLabels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Load Time (ms)', color: theme.text },
+              ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
+              grid: { color: theme.grid },
+            },
+            x: {
+              ticks: { color: theme.text, font: { family: 'Inter', size: 12 } },
+              grid: { display: false },
+            }
+          },
+          plugins: {
+            legend: { labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ms`
+              }
+            }
+          }
+        }
+      });
+    } else {
+      const metricMap = {
+        cpu: { title: "CPU Usage Comparison (%) — Lower is better", unit: "%", key: "cpu" },
+        memory: { title: "Memory Usage Comparison (MB) — Lower is better", unit: "MB", key: "memory" },
+        startup: { title: "Startup Speed Comparison (ms) — Lower is better", unit: "ms", key: "startup" },
+      };
+
+      const meta = metricMap[currentChartMetric];
+      document.getElementById("chartTitle").innerText = meta.title;
+
+      const labels = browsers;
+      const data = browsers.map(b => Number(summary[b][meta.key].mean.toFixed(1)));
+      const bgColors = browsers.map(b => BROWSER_COLORS[b]?.bg || 'rgba(100,100,100,0.7)');
+      const borderColors = browsers.map(b => BROWSER_COLORS[b]?.border || '#888');
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: meta.title,
+            data,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            borderRadius: 7,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: meta.unit, color: theme.text },
+              ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
+              grid: { color: theme.grid },
+            },
+            x: {
+              ticks: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } },
+              grid: { display: false },
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.raw} ${meta.unit}`
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  function renderTable(summary) {
+    const tbody = document.getElementById("summaryTableBody");
+    const browsers = Object.keys(summary);
+
+    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
+    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
+    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
+
+    const wins = {};
+    browsers.forEach(b => wins[b] = 0);
+    wins[bestStartup]++;
+    wins[bestCpu]++;
+    wins[bestMem]++;
+
+    const ranked = [...browsers].sort((a,b) => wins[b] - wins[a]);
+
+    tbody.innerHTML = ranked.map((b, idx) => {
+      const s = summary[b];
+      const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
+      const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
+      const rankBadge = idx === 0
+        ? `<span class="pill-tag pill-green">#1 Overall</span>`
+        : `<span class="pill-tag pill-gray">#${idx+1}</span>`;
+
+      return `
+        <tr>
+          <td><strong>${b}</strong></td>
+          <td class="mono">${s.startup.mean.toFixed(0)} ms</td>
+          <td class="mono">${s.cpu.mean.toFixed(1)}%</td>
+          <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
+          <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
+          <td class="mono">${p90Str}</td>
+          <td class="mono">${speedStr}</td>
+          <td>${rankBadge}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderLogs(tabName) {
+    currentCsv = tabName;
+    const rows = rawCsvData[tabName] || [];
+    const thead = document.getElementById("rawHead");
+    const tbody = document.getElementById("rawBody");
+
+    if (!rows.length) {
+      thead.innerHTML = '';
+      tbody.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center;">No logs available.</td></tr>';
+      return;
+    }
+
+    const headers = Object.keys(rows[0]);
+    thead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+    tbody.innerHTML = rows.map(r => `
+      <tr>${headers.map(h => `<td class="mono">${r[h]}</td>`).join('')}</tr>
+    `).join('');
+  }
+
+  function switchCsvTab(tabName, btn) {
+    Array.from(btn.parentElement.children).forEach(c => c.className = 'tab-btn');
+    btn.className = 'tab-btn active';
+    renderLogs(tabName);
+  }
+
+  function filterLogs() {
+    const q = document.getElementById("logFilter").value.toLowerCase();
+    document.querySelectorAll("#rawLogsTable tbody tr").forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

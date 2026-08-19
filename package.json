@@ -1,0 +1,22 @@
+{
+  "name": "browserperformance",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "bench": "node scripts/runner.js",
+    "analyze": "node scripts/analyze.js",
+    "dashboard": "node dashboard/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "express": "^4.19.2",
+    "playwright": "^1.62.1",
+    "ws": "^8.18.0"
+  }
+}
