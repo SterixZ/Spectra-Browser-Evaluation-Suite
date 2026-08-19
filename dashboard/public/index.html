@@ -90,7 +90,10 @@
           <div class="kpi-main-number" id="activeCount" style="font-size:24px;">0</div>
         </div>
         <div style="flex:1; min-width:180px;">
-          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Aggregate CPU Load</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;">Aggregate CPU Load</span>
+            <span id="aggregateCpuVal" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:var(--text);">0.0%</span>
+          </div>
           <div style="height:44px; position:relative;">
             <canvas id="sessionChart"></canvas>
           </div>
@@ -364,7 +367,8 @@ try {
         borderWidth: 2,
         tension: 0.35,
         fill: true,
-        backgroundColor: "rgba(99, 102, 241, 0.15)"
+        backgroundColor: "rgba(99, 102, 241, 0.15)",
+        pointRadius: 0,
       }]
     },
     options: {
@@ -372,7 +376,11 @@ try {
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { x: { display: false }, y: { display: false, beginAtZero: true, max: 100 } }
+      elements: { point: { radius: 0, hitRadius: 0 } },
+      scales: {
+        x: { display: false },
+        y: { display: false, beginAtZero: true, suggestedMax: 15 }
+      }
     }
   });
 } catch (err) {
@@ -455,6 +463,8 @@ ws.onmessage = (event) => {
 
     latestCpu[browser] = Number(cpuPercent);
     const combined = Object.values(latestCpu).reduce((a, b) => a + b, 0);
+    const aggEl = document.getElementById("aggregateCpuVal");
+    if (aggEl) aggEl.textContent = `${combined.toFixed(1)}%`;
     if (sessionChart) pushRollingValue(sessionChart, combined);
   }
 };
