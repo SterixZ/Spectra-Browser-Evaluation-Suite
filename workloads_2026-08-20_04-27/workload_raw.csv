@@ -1,0 +1,151 @@
+Browser,Category,SiteName,Url,Iteration,LoadTimeMs,TTFB_Ms,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB
+Chrome,Lightweight,"Example Domain","https://example.com",1,617.2,607.1,617.2,2.14,1.01,571.1,571.1
+Chrome,Lightweight,"Hacker News","https://news.ycombinator.com",1,1205.7,719.7,1205.7,1.22,0.53,621.6,621.3
+Chrome,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",1,1417.8,853.8,1417.7,2.34,0.83,702.3,702.3
+Chrome,Lightweight,"HTTPBin HTML","https://httpbin.org/html",1,1185.8,1178.3,1185.8,0.86,0.34,641.1,634.5
+Chrome,Lightweight,"W3C Consortium","https://www.w3.org",1,11224.0,10686.0,11223.9,2.58,0.44,780.0,780.0
+Chrome,Heavyweight,"Reddit Feed","https://www.reddit.com",1,6090.6,3456.2,6090.4,1.76,0.89,780.7,779.9
+Chrome,Heavyweight,"YouTube Home","https://www.youtube.com",1,4323.7,356.8,4322.2,4.94,2.34,1295.2,1282.5
+Chrome,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",1,1955.7,858.7,1950.0,2.48,1.14,1325.6,1325.6
+Chrome,Heavyweight,"Amazon Portal","https://www.amazon.com",1,2731.7,2731.1,0.0,1.39,0.46,1161.3,1002.7
+Chrome,Heavyweight,"Unsplash Media","https://unsplash.com",1,10305.4,7507.8,10305.1,2.13,0.71,1142.7,1142.6
+Chrome,Lightweight,"Example Domain","https://example.com",2,219.2,203.1,219.2,1.23,0.74,562.7,562.7
+Chrome,Lightweight,"Hacker News","https://news.ycombinator.com",2,3827.0,3212.1,3826.9,0.64,0.36,617.0,616.7
+Chrome,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",2,1401.3,702.6,1401.3,1.66,0.69,691.9,685.3
+Chrome,Lightweight,"HTTPBin HTML","https://httpbin.org/html",2,1187.3,1178.2,1187.2,0.73,0.41,630.4,628.9
+Chrome,Lightweight,"W3C Consortium","https://www.w3.org",2,22998.0,22399.3,22997.9,1.14,0.34,774.1,774.0
+Chrome,Heavyweight,"Reddit Feed","https://www.reddit.com",2,4971.0,2836.2,4970.1,3.11,1.40,776.7,776.7
+Chrome,Heavyweight,"YouTube Home","https://www.youtube.com",2,9681.4,6706.2,9679.6,4.58,1.27,1138.4,1138.4
+Chrome,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",2,3006.3,887.2,2998.7,0.84,0.62,1307.9,1307.9
+Chrome,Heavyweight,"Amazon Portal","https://www.amazon.com",2,21750.8,214.0,21750.8,1.57,0.47,1162.8,1009.5
+Chrome,Heavyweight,"Unsplash Media","https://unsplash.com",2,4201.8,3508.6,4201.4,3.85,1.42,1156.9,1153.8
+Chrome,Lightweight,"Example Domain","https://example.com",3,328.6,308.4,328.6,0.81,0.43,563.9,563.9
+Chrome,Lightweight,"Hacker News","https://news.ycombinator.com",3,1193.1,734.4,1193.0,1.46,0.82,635.2,633.9
+Chrome,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",3,4412.6,3706.7,4412.5,2.83,0.99,681.0,681.0
+Chrome,Lightweight,"HTTPBin HTML","https://httpbin.org/html",3,893.1,879.9,893.1,0.52,0.25,632.0,631.5
+Chrome,Lightweight,"W3C Consortium","https://www.w3.org",3,675.5,192.6,675.4,2.01,1.19,783.4,783.4
+Chrome,Heavyweight,"Reddit Feed","https://www.reddit.com",3,3787.7,1662.2,3787.4,2.35,1.32,776.8,776.8
+Chrome,Heavyweight,"YouTube Home","https://www.youtube.com",3,7479.1,3263.7,7477.4,5.55,1.74,1300.1,1138.5
+Chrome,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",3,8733.6,5965.1,8727.8,3.79,1.21,1288.8,1288.8
+Chrome,Heavyweight,"Amazon Portal","https://www.amazon.com",3,6136.4,811.2,6090.9,3.78,1.42,1245.3,1216.6
+Chrome,Heavyweight,"Unsplash Media","https://unsplash.com",3,692.2,595.9,0.0,3.35,1.03,1342.9,1315.5
+Chrome,Lightweight,"Example Domain","https://example.com",4,275.9,248.9,275.9,1.56,1.34,572.2,572.2
+Chrome,Lightweight,"Hacker News","https://news.ycombinator.com",4,1841.1,1379.5,1841.0,1.29,0.55,622.9,622.1
+Chrome,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",4,1184.4,445.0,1184.3,2.33,1.18,690.3,682.9
+Chrome,Lightweight,"HTTPBin HTML","https://httpbin.org/html",4,1360.1,1341.0,1360.1,0.62,0.20,622.0,619.8
+Chrome,Lightweight,"W3C Consortium","https://www.w3.org",4,4147.1,2714.9,4147.1,2.51,0.87,767.9,767.3
+Chrome,Heavyweight,"Reddit Feed","https://www.reddit.com",4,1863.8,339.3,1863.5,4.34,1.97,779.4,779.4
+Chrome,Heavyweight,"YouTube Home","https://www.youtube.com",4,6828.2,3535.3,6826.9,4.95,1.94,1273.0,1148.9
+Chrome,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",4,3592.3,1163.6,3579.0,3.47,1.77,1312.3,1312.3
+Chrome,Heavyweight,"Amazon Portal","https://www.amazon.com",4,947.4,118.6,947.4,1.58,0.56,1161.3,1030.8
+Chrome,Heavyweight,"Unsplash Media","https://unsplash.com",4,1667.5,696.2,1667.1,3.22,1.43,1163.5,1160.6
+Chrome,Lightweight,"Example Domain","https://example.com",5,375.1,351.1,375.1,1.68,0.93,570.1,565.9
+Chrome,Lightweight,"Hacker News","https://news.ycombinator.com",5,5005.4,4271.9,5005.3,1.14,0.52,634.8,610.5
+Chrome,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",5,1036.0,477.2,1036.0,2.59,0.98,695.0,695.0
+Chrome,Lightweight,"HTTPBin HTML","https://httpbin.org/html",5,2839.3,2822.1,2839.3,0.70,0.36,632.9,627.3
+Chrome,Lightweight,"W3C Consortium","https://www.w3.org",5,1637.8,1300.2,1637.8,1.73,0.98,776.3,775.4
+Chrome,Heavyweight,"Reddit Feed","https://www.reddit.com",5,4312.4,2114.9,4312.0,1.69,1.26,781.1,781.1
+Chrome,Heavyweight,"YouTube Home","https://www.youtube.com",5,9486.9,3847.6,9482.6,5.21,1.62,1134.5,1134.1
+Chrome,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",5,4709.6,1278.1,4699.8,3.92,1.59,1293.5,1293.5
+Chrome,Heavyweight,"Amazon Portal","https://www.amazon.com",5,1426.0,1124.2,1426.0,0.77,0.51,1185.0,1145.2
+Chrome,Heavyweight,"Unsplash Media","https://unsplash.com",5,5722.6,4013.1,5722.1,3.10,1.16,1181.6,1164.1
+Edge,Lightweight,"Example Domain","https://example.com",1,915.2,897.2,915.2,1.58,0.62,437.6,437.6
+Edge,Lightweight,"Hacker News","https://news.ycombinator.com",1,1819.1,1098.7,1819.0,1.07,0.37,467.3,465.8
+Edge,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",1,1663.0,420.9,1662.7,1.73,0.97,523.3,523.3
+Edge,Lightweight,"HTTPBin HTML","https://httpbin.org/html",1,3927.8,3914.4,3927.8,0.90,0.40,486.3,457.6
+Edge,Lightweight,"W3C Consortium","https://www.w3.org",1,21396.8,21003.6,21396.6,2.34,0.63,619.0,615.3
+Edge,Heavyweight,"Reddit Feed","https://www.reddit.com",1,1760.8,457.2,1760.2,3.65,2.29,649.7,649.7
+Edge,Heavyweight,"YouTube Home","https://www.youtube.com",1,5127.1,470.1,5125.2,5.03,1.97,1058.0,1058.0
+Edge,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",1,14260.2,1638.4,0.0,2.88,0.73,1096.4,1012.5
+Edge,Heavyweight,"Amazon Portal","https://www.amazon.com",1,2553.8,922.2,2518.8,3.70,2.02,1094.3,1094.3
+Edge,Heavyweight,"Unsplash Media","https://unsplash.com",1,952.0,338.5,951.4,4.06,1.96,1186.2,1184.0
+Edge,Lightweight,"Example Domain","https://example.com",2,318.9,301.1,318.9,2.20,1.36,452.5,452.5
+Edge,Lightweight,"Hacker News","https://news.ycombinator.com",2,4978.1,1238.6,4978.1,0.92,0.52,477.0,477.0
+Edge,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",2,1126.7,512.1,1126.6,1.55,0.74,533.5,533.5
+Edge,Lightweight,"HTTPBin HTML","https://httpbin.org/html",2,1014.1,990.9,1014.0,0.36,0.23,473.6,471.7
+Edge,Lightweight,"W3C Consortium","https://www.w3.org",2,22003.7,21569.3,22003.6,2.28,0.52,604.2,602.8
+Edge,Heavyweight,"Reddit Feed","https://www.reddit.com",2,26114.7,23858.2,26114.3,3.35,0.76,631.0,631.0
+Edge,Heavyweight,"YouTube Home","https://www.youtube.com",2,8202.3,3754.5,8200.8,7.22,2.50,1128.2,1036.2
+Edge,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",2,6258.1,5041.8,6250.9,3.40,1.28,1144.7,1138.9
+Edge,Heavyweight,"Amazon Portal","https://www.amazon.com",2,3384.3,1018.8,3345.7,3.23,1.76,1187.5,1184.1
+Edge,Heavyweight,"Unsplash Media","https://unsplash.com",2,1215.7,576.8,1215.2,2.43,1.51,1259.5,1168.6
+Edge,Lightweight,"Example Domain","https://example.com",3,297.9,281.8,297.9,1.83,1.20,429.5,426.6
+Edge,Lightweight,"Hacker News","https://news.ycombinator.com",3,1707.9,1215.7,1707.8,1.89,0.81,469.6,468.1
+Edge,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",3,920.6,418.9,920.6,2.30,1.54,522.1,522.1
+Edge,Lightweight,"HTTPBin HTML","https://httpbin.org/html",3,4681.8,4664.4,4681.8,2.05,1.26,467.8,460.2
+Edge,Lightweight,"W3C Consortium","https://www.w3.org",3,21447.3,20924.1,21447.1,2.89,1.86,605.0,601.4
+Edge,Heavyweight,"Reddit Feed","https://www.reddit.com",3,1673.9,160.2,1673.6,5.01,3.16,645.3,645.3
+Edge,Heavyweight,"YouTube Home","https://www.youtube.com",3,7419.5,369.7,7417.8,4.92,2.80,1097.5,1028.3
+Edge,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",3,1953.9,770.8,1947.0,6.60,3.72,1122.4,1107.1
+Edge,Heavyweight,"Amazon Portal","https://www.amazon.com",3,22167.3,569.5,22167.3,1.34,0.18,981.8,839.5
+Edge,Heavyweight,"Unsplash Media","https://unsplash.com",3,2685.8,633.6,2685.3,3.09,1.91,970.1,967.8
+Edge,Lightweight,"Example Domain","https://example.com",4,2349.1,2327.2,2349.1,2.11,1.63,422.0,422.0
+Edge,Lightweight,"Hacker News","https://news.ycombinator.com",4,1388.3,816.0,1388.2,1.61,0.95,468.4,467.4
+Edge,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",4,1441.8,784.3,1441.7,3.43,1.28,522.0,520.9
+Edge,Lightweight,"HTTPBin HTML","https://httpbin.org/html",4,796.5,780.7,796.5,1.10,0.73,471.5,469.5
+Edge,Lightweight,"W3C Consortium","https://www.w3.org",4,24682.0,24166.3,24681.8,2.85,1.75,594.6,592.1
+Edge,Heavyweight,"Reddit Feed","https://www.reddit.com",4,4045.4,1488.1,4045.1,4.62,2.96,637.6,637.6
+Edge,Heavyweight,"YouTube Home","https://www.youtube.com",4,10620.6,6704.4,10614.1,6.85,2.87,1033.2,979.1
+Edge,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",4,6289.0,2405.2,6281.7,6.18,2.75,1144.5,1143.7
+Edge,Heavyweight,"Amazon Portal","https://www.amazon.com",4,2186.6,1261.5,2186.5,2.49,1.70,1017.8,1017.8
+Edge,Heavyweight,"Unsplash Media","https://unsplash.com",4,1003.7,759.1,0.0,3.73,2.26,1076.0,970.9
+Edge,Lightweight,"Example Domain","https://example.com",5,454.1,440.8,454.1,1.93,1.47,443.2,443.2
+Edge,Lightweight,"Hacker News","https://news.ycombinator.com",5,4899.4,1210.0,4899.4,2.66,1.35,469.2,466.7
+Edge,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",5,916.5,260.5,915.5,2.85,1.45,531.4,531.4
+Edge,Lightweight,"HTTPBin HTML","https://httpbin.org/html",5,3891.4,3875.9,3891.4,2.15,1.15,468.4,462.6
+Edge,Lightweight,"W3C Consortium","https://www.w3.org",5,21085.3,20684.4,21085.3,2.40,1.34,609.9,607.5
+Edge,Heavyweight,"Reddit Feed","https://www.reddit.com",5,12666.1,11178.3,12665.7,2.77,1.27,635.9,635.4
+Edge,Heavyweight,"YouTube Home","https://www.youtube.com",5,2234.5,193.7,2233.4,4.95,2.92,1076.8,1046.9
+Edge,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",5,2071.6,931.8,2067.0,3.46,1.50,1142.3,1142.3
+Edge,Heavyweight,"Amazon Portal","https://www.amazon.com",5,60.8,59.6,0.0,1.97,1.20,978.4,797.7
+Edge,Heavyweight,"Unsplash Media","https://unsplash.com",5,1405.7,1318.7,0.0,2.80,0.53,959.0,957.8
+Firefox,Lightweight,"Example Domain","https://example.com",1,544.0,257.0,544.0,2.02,0.93,788.7,786.1
+Firefox,Lightweight,"Hacker News","https://news.ycombinator.com",1,4528.0,3827.0,4528.0,0.93,0.47,794.0,772.7
+Firefox,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",1,21809.0,1178.0,21809.0,1.76,0.63,834.3,830.5
+Firefox,Lightweight,"HTTPBin HTML","https://httpbin.org/html",1,8318.0,8296.0,8318.0,1.67,0.75,783.5,766.6
+Firefox,Lightweight,"W3C Consortium","https://www.w3.org",1,19577.0,12145.0,19576.0,1.95,0.54,890.7,889.6
+Firefox,Heavyweight,"Reddit Feed","https://www.reddit.com",1,2655.0,319.0,2653.0,4.09,2.38,1124.4,1119.3
+Firefox,Heavyweight,"YouTube Home","https://www.youtube.com",1,3805.0,285.0,3803.0,6.20,2.99,1315.0,1254.0
+Firefox,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",1,3717.0,2672.0,3715.0,4.89,1.64,1341.3,1341.3
+Firefox,Heavyweight,"Amazon Portal","https://www.amazon.com",1,4335.0,904.0,4303.0,4.75,1.15,1292.6,1242.9
+Firefox,Heavyweight,"Unsplash Media","https://unsplash.com",1,11098.0,4926.0,11097.0,2.26,0.72,1182.5,1171.2
+Firefox,Lightweight,"Example Domain","https://example.com",2,4743.0,4384.0,4742.0,2.36,0.74,777.7,759.6
+Firefox,Lightweight,"Hacker News","https://news.ycombinator.com",2,18188.0,13188.0,18187.0,1.53,0.50,742.1,740.8
+Firefox,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",2,1809.0,366.0,1809.0,1.70,0.64,825.7,820.8
+Firefox,Lightweight,"HTTPBin HTML","https://httpbin.org/html",2,1565.0,1540.0,1564.0,0.94,0.51,783.6,782.0
+Firefox,Lightweight,"W3C Consortium","https://www.w3.org",2,11138.0,8117.0,11138.0,1.34,0.53,888.0,886.8
+Firefox,Heavyweight,"Reddit Feed","https://www.reddit.com",2,355.0,355.0,0.0,4.13,1.12,789.5,772.4
+Firefox,Heavyweight,"YouTube Home","https://www.youtube.com",2,23895.0,1515.0,23894.0,4.70,0.96,1157.7,1154.3
+Firefox,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",2,21517.0,1114.0,21510.0,2.32,0.58,1103.5,1099.5
+Firefox,Heavyweight,"Amazon Portal","https://www.amazon.com",2,11997.0,1535.0,11997.0,1.29,0.34,1084.5,887.0
+Firefox,Heavyweight,"Unsplash Media","https://unsplash.com",2,12178.0,1662.0,12178.0,2.87,0.57,977.8,976.2
+Firefox,Lightweight,"Example Domain","https://example.com",3,3110.0,3089.0,3110.0,3.34,1.32,769.4,768.1
+Firefox,Lightweight,"Hacker News","https://news.ycombinator.com",3,1932.0,1187.0,1931.0,0.51,0.32,777.6,777.4
+Firefox,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",3,1434.0,768.0,1434.0,2.59,1.13,836.4,832.1
+Firefox,Lightweight,"HTTPBin HTML","https://httpbin.org/html",3,2382.0,2358.0,2380.0,1.65,0.75,784.4,783.7
+Firefox,Lightweight,"W3C Consortium","https://www.w3.org",3,4578.0,2893.0,4577.0,1.47,0.66,895.4,893.6
+Firefox,Heavyweight,"Reddit Feed","https://www.reddit.com",3,3289.0,527.0,0.0,3.30,1.14,845.2,844.5
+Firefox,Heavyweight,"YouTube Home","https://www.youtube.com",3,9479.0,1123.0,9479.0,3.52,1.21,1120.6,1079.0
+Firefox,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",3,7163.0,2345.0,0.0,3.19,0.85,1107.1,1107.1
+Firefox,Heavyweight,"Amazon Portal","https://www.amazon.com",3,5748.0,818.0,0.0,2.09,0.82,947.8,947.8
+Firefox,Heavyweight,"Unsplash Media","https://unsplash.com",3,7981.0,5587.0,7981.0,2.49,0.80,998.0,990.7
+Firefox,Lightweight,"Example Domain","https://example.com",4,1245.0,1226.0,1245.0,3.67,1.26,774.5,773.6
+Firefox,Lightweight,"Hacker News","https://news.ycombinator.com",4,5707.0,5195.0,5707.0,1.45,0.48,784.4,757.5
+Firefox,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",4,4033.0,388.0,4033.0,2.51,0.71,826.9,826.5
+Firefox,Lightweight,"HTTPBin HTML","https://httpbin.org/html",4,1519.0,1484.0,1519.0,0.82,0.39,779.8,777.0
+Firefox,Lightweight,"W3C Consortium","https://www.w3.org",4,21092.0,19736.0,21092.0,1.22,0.37,889.3,889.3
+Firefox,Heavyweight,"Reddit Feed","https://www.reddit.com",4,3667.0,348.0,0.0,3.55,1.39,845.3,826.8
+Firefox,Heavyweight,"YouTube Home","https://www.youtube.com",4,12267.0,7271.0,0.0,4.73,1.09,1121.6,1072.2
+Firefox,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",4,9343.0,2040.0,0.0,2.95,1.13,1119.1,1111.3
+Firefox,Heavyweight,"Amazon Portal","https://www.amazon.com",4,1655.0,1655.0,0.0,1.69,0.76,1105.1,938.7
+Firefox,Heavyweight,"Unsplash Media","https://unsplash.com",4,8529.0,1449.0,8529.0,2.13,0.91,990.3,978.0
+Firefox,Lightweight,"Example Domain","https://example.com",5,557.0,529.0,556.0,2.98,1.68,773.2,771.6
+Firefox,Lightweight,"Hacker News","https://news.ycombinator.com",5,1341.0,853.0,1341.0,1.49,0.67,808.4,790.7
+Firefox,Lightweight,"Wikipedia Main","https://en.wikipedia.org/wiki/Main_Page",5,2308.0,1188.0,2308.0,2.35,0.92,836.8,832.8
+Firefox,Lightweight,"HTTPBin HTML","https://httpbin.org/html",5,9340.0,9324.0,9340.0,0.77,0.37,778.1,760.3
+Firefox,Lightweight,"W3C Consortium","https://www.w3.org",5,1793.0,897.0,1793.0,1.42,0.34,889.0,885.7
+Firefox,Heavyweight,"Reddit Feed","https://www.reddit.com",5,621.0,621.0,0.0,5.00,0.65,755.9,753.5
+Firefox,Heavyweight,"YouTube Home","https://www.youtube.com",5,15809.0,6766.0,15808.0,5.44,1.05,1143.1,1143.1
+Firefox,Heavyweight,"GitHub VSCode Repo","https://github.com/microsoft/vscode",5,11102.0,2166.0,11100.0,2.45,0.90,1139.9,1100.1
+Firefox,Heavyweight,"Amazon Portal","https://www.amazon.com",5,3623.0,2748.0,3623.0,0.96,0.29,1073.1,873.8
+Firefox,Heavyweight,"Unsplash Media","https://unsplash.com",5,17536.0,2022.0,17536.0,4.80,0.52,977.4,974.9
