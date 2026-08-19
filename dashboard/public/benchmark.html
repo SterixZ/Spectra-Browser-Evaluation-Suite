@@ -453,7 +453,12 @@
 
     if (workloads && workloads.length && workloadSelect) {
       workloadSelect.innerHTML = workloads.map(w => `<option value="${w}">${w}</option>`).join("");
+      workloadSelect.addEventListener('change', () => loadWorkloadRun(workloadSelect.value));
       await loadWorkloadRun(workloads[0]);
+    } else if (workloadSelect) {
+      workloadSelect.innerHTML = `<option value="">(No workload runs found)</option>`;
+      document.getElementById("workloadHeadline").innerText = "No Workload Runs Found";
+      document.getElementById("workloadDesc").innerText = "Run `npm run bench:workloads` in your terminal to benchmark 5 light vs 5 heavy websites.";
     }
 
     const initialHash = window.location.hash.replace('#', '');
