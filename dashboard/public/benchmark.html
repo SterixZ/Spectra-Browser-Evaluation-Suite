@@ -92,7 +92,7 @@
           <div class="winner-badge">Overall Top Performer</div>
           <div class="winner-heading" id="winnerHeadline">Analyzing Benchmark Results...</div>
           <div class="winner-text" id="winnerText">
-            Evaluating performance distributions across startup speed, memory usage, CPU load, and web responsiveness.
+            Evaluating multi-dimensional performance across Startup Time, Response Time, Reaction Time, and System Resource Efficiency.
           </div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;" id="winnerChips"></div>
@@ -101,10 +101,10 @@
       <!-- 4 Scaled KPI Cards Grid -->
       <div class="kpi-grid">
 
-        <!-- 1. Startup Speed -->
+        <!-- 1. Startup Time -->
         <div class="kpi-card">
           <div class="kpi-card-header">
-            <span class="kpi-label">Startup Speed</span>
+            <span class="kpi-label">Startup Time</span>
             <span class="kpi-badge win" id="startupWinnerBadge">Fastest: Chrome</span>
           </div>
           <div class="kpi-value-row">
@@ -143,17 +143,17 @@
           <div class="mini-compare-list" id="memCompareList"></div>
         </div>
 
-        <!-- 4. Responsiveness -->
+        <!-- 4. Reaction Time -->
         <div class="kpi-card">
           <div class="kpi-card-header">
-            <span class="kpi-label">Web Responsiveness</span>
+            <span class="kpi-label">Reaction Time</span>
             <span class="kpi-badge win" id="speedWinnerBadge">Top: Firefox</span>
           </div>
           <div class="kpi-value-row">
             <div class="kpi-main-number" id="speedMainVal">—</div>
             <div class="kpi-unit">pts</div>
           </div>
-          <div class="kpi-subtext" id="speedSubtext">Speedometer 3.0 benchmark score</div>
+          <div class="kpi-subtext" id="speedSubtext">Speedometer 3.0 UI reaction & interaction score</div>
           <div class="mini-compare-list" id="speedCompareList"></div>
         </div>
 
@@ -167,11 +167,11 @@
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
           <div>
-            <div style="font-size:18px; font-weight:800; color:var(--text);" id="chartTitle">Page Load Speed across Websites (ms)</div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);" id="chartTitle">Response Time across Websites (ms)</div>
             <div style="font-size:13px; color:var(--muted);" id="chartSubtitle">Interactive comparison across 10 measured websites (Lower is better)</div>
           </div>
           <div class="btn-group">
-            <button class="tab-btn active" onclick="setChartMode('pageload', this)">Page Load by Website</button>
+            <button class="tab-btn active" onclick="setChartMode('pageload', this)">Response Time by Website</button>
             <button class="tab-btn" onclick="setChartMode('kiviat', this)">Kiviat Radar Graph</button>
             <button class="tab-btn" onclick="setChartMode('combined', this)">Combined System Resources</button>
           </div>
@@ -198,7 +198,7 @@
         <!-- 3. Combined 3-Column Resource Charts -->
         <div id="chartContainerCombined" style="display:none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
           <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">Startup Speed (ms)</div>
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">Startup Time (ms)</div>
             <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Cold process initialization latency</div>
             <div style="height:280px; position:relative;"><canvas id="chartStartupCombined"></canvas></div>
           </div>
@@ -235,9 +235,9 @@
             <thead>
               <tr>
                 <th>Browser</th>
-                <th>Lightweight Mean Load</th>
-                <th>Heavyweight Mean Load</th>
-                <th>Load Inflation Multiplier</th>
+                <th>Lightweight Response Time</th>
+                <th>Heavyweight Response Time</th>
+                <th>Response Time Inflation</th>
                 <th>Lightweight Peak RAM</th>
                 <th>Heavyweight Peak RAM</th>
                 <th>RAM Inflation Multiplier</th>
@@ -261,12 +261,12 @@
             <thead>
               <tr>
                 <th>Browser</th>
-                <th>Startup Speed</th>
+                <th>Startup Time</th>
                 <th>CPU Usage</th>
                 <th>RAM Usage</th>
-                <th>Avg Page Load</th>
-                <th>Tail Latency (P90)</th>
-                <th>Responsiveness</th>
+                <th>Avg Response Time</th>
+                <th>Response Time (P90)</th>
+                <th>Reaction Time</th>
                 <th>Overall Rank</th>
               </tr>
             </thead>
@@ -292,11 +292,11 @@
             <thead>
               <tr>
                 <th>Target Browser</th>
-                <th>Startup Ratio</th>
+                <th>Startup Time Ratio</th>
                 <th>CPU Ratio</th>
                 <th>RAM Ratio</th>
-                <th>Page Load Ratio</th>
-                <th>Speedometer Ratio</th>
+                <th>Response Time Ratio</th>
+                <th>Reaction Time Ratio</th>
                 <th>Overall GeoMean Ratio</th>
                 <th>Verdict vs Baseline</th>
               </tr>
@@ -320,9 +320,9 @@
           </div>
           <div style="display:flex; gap:12px; align-items:center;">
             <div class="btn-group" id="logTabGroup">
-              <button class="tab-btn active" onclick="switchCsvTab('pageloads', this)">Page Loads</button>
+              <button class="tab-btn active" onclick="switchCsvTab('pageloads', this)">Response Times</button>
               <button class="tab-btn" onclick="switchCsvTab('metrics', this)">System Metrics</button>
-              <button class="tab-btn" onclick="switchCsvTab('speedometer', this)">Speedometer</button>
+              <button class="tab-btn" onclick="switchCsvTab('speedometer', this)">Reaction Times</button>
               <button class="tab-btn" id="networkLogTabBtn" style="display:none;" onclick="switchCsvTab('network', this)">Network Traffic</button>
               <button class="tab-btn" id="workloadLogTabBtn" style="display:none;" onclick="switchCsvTab('workload_raw', this)">Workload Samples</button>
             </div>
@@ -503,11 +503,11 @@
       document.getElementById("winnerHeadline").innerText = `${overallWinner} is the Top Performer Overall`;
       document.getElementById("winnerText").innerHTML = `
         <strong>${overallWinner}</strong> achieved the optimal balance of fast execution and system efficiency.
-        It demonstrated the fastest cold startup speed (${summary[bestStartup]?.startup.mean.toFixed(0) || 0} ms) and solid resource utilization.
+        It demonstrated the fastest cold startup time (${summary[bestStartup]?.startup.mean.toFixed(0) || 0} ms) and solid resource utilization.
       `;
 
       document.getElementById("winnerChips").innerHTML = `
-        <span class="pill-tag pill-green">Fastest Startup: ${bestStartup}</span>
+        <span class="pill-tag pill-green">Fastest Startup Time: ${bestStartup}</span>
         <span class="pill-tag pill-blue">Lowest CPU: ${bestCpu}</span>
         <span class="pill-tag pill-purple">Lowest RAM: ${bestMem}</span>
       `;
@@ -779,7 +779,7 @@
       pLoad.style.display = 'block';
       pKiviat.style.display = 'none';
       pComb.style.display = 'none';
-      document.getElementById('chartTitle').innerText = 'Page Load Speed across Websites (ms)';
+      document.getElementById('chartTitle').innerText = 'Response Time across Websites (ms)';
       document.getElementById('chartSubtitle').innerText = 'Interactive comparison across 10 measured websites (Lower is better)';
       renderChart();
     } else if (mode === 'kiviat') {
@@ -793,7 +793,7 @@
       pLoad.style.display = 'none';
       pKiviat.style.display = 'none';
       pComb.style.display = 'grid';
-      document.getElementById('chartTitle').innerText = 'Combined System Resources (Startup / CPU / RAM)';
+      document.getElementById('chartTitle').innerText = 'Combined System Resources (Startup Time / CPU / RAM)';
       document.getElementById('chartSubtitle').innerText = 'Multi-metric resource utilization and initialization latency comparison';
       renderCombinedResourceCharts();
     }
@@ -847,7 +847,7 @@
         scales: {
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'Load Time (ms)', color: theme.text },
+            title: { display: true, text: 'Response Time (ms)', color: theme.text },
             ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
             grid: { color: theme.grid },
           },
@@ -901,11 +901,11 @@
     const minInflation = Object.keys(workloadMap).length ? Math.min(...Object.values(workloadMap)) : 1;
 
     const labels = [
-      'Startup Speed',
+      'Startup Time',
       'CPU Efficiency',
       'Memory Efficiency',
-      'Page Load Speed',
-      'Web Responsiveness',
+      'Response Time',
+      'Reaction Time',
       'Workload Resilience',
     ];
 
