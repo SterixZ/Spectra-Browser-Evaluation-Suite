@@ -583,10 +583,6 @@
 
     tbody.innerHTML = ranked.map((b, idx) => {
       const s = summary[b];
-      const startupStr = s.startup?.n > 0 && s.startup.mean > 0 ? `${s.startup.mean.toFixed(0)} ms` : '—';
-      const cpuStr = s.cpu?.n > 0 ? `${s.cpu.mean.toFixed(1)}%` : '—';
-      const memStr = s.memory?.n > 0 && s.memory.mean > 0 ? `${s.memory.mean.toFixed(0)} MB` : '—';
-      const loadStr = s.pageload?.n > 0 && s.pageload.mean > 0 ? `${s.pageload.mean.toFixed(0)} ms` : '—';
       const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
       const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
       const rankBadge = idx === 0
@@ -596,10 +592,10 @@
       return `
         <tr>
           <td><strong>${b}</strong></td>
-          <td class="mono">${startupStr}</td>
-          <td class="mono">${cpuStr}</td>
-          <td class="mono">${memStr}</td>
-          <td class="mono">${loadStr}</td>
+          <td class="mono">${s.startup.mean.toFixed(0)} ms</td>
+          <td class="mono">${s.cpu.mean.toFixed(1)}%</td>
+          <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
+          <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
           <td class="mono">${p90Str}</td>
           <td class="mono">${speedStr}</td>
           <td>${rankBadge}</td>
@@ -712,82 +708,47 @@
     }).join('');
   }
 
-  const CANONICAL_SITES = [
-    // Standard Canonical 10
-    "https://www.google.com",
-    "https://github.com",
-    "https://stackoverflow.com",
-    "https://www.wikipedia.org",
-    "https://www.youtube.com",
-    "https://www.reddit.com",
-    "https://www.microsoft.com",
-    "https://developer.mozilla.org",
-    "https://playwright.dev",
-    "https://openai.com",
-
-    // Workload Sites (5 Light + 5 Heavy)
-    "Example Domain", "https://example.com", "example.com",
-    "Hacker News", "https://news.ycombinator.com", "news.ycombinator.com",
-    "Wikipedia Main", "https://en.wikipedia.org/wiki/Main_Page", "wikipedia.org",
-    "HTTPBin HTML", "https://httpbin.org/html", "httpbin.org",
-    "W3C Consortium", "https://www.w3.org", "w3.org",
-    "Reddit Feed", "https://www.reddit.com", "reddit.com",
-    "YouTube Home", "https://www.youtube.com", "youtube.com",
-    "GitHub VSCode Repo", "https://github.com/microsoft/vscode", "github.com",
-    "Amazon Portal", "https://www.amazon.com", "amazon.com",
-    "Unsplash Media", "https://unsplash.com", "unsplash.com",
+  const CANONICAL_ORDER = [
+    // Standard benchmark canonical list
+    "google", "github.com", "stackoverflow", "wikipedia", "youtube", "reddit", "microsoft", "mozilla", "playwright", "openai",
+    // Workload benchmark canonical list (5 Light followed by 5 Heavy)
+    "example", "hacker", "wikipedia", "httpbin", "w3c", "reddit", "youtube", "vscode", "amazon", "unsplash"
   ];
 
-  function getCanonicalSiteIndex(urlOrName) {
-    const raw = String(urlOrName).toLowerCase();
-    const idx = CANONICAL_SITES.findIndex(c => c.toLowerCase() === raw || raw.includes(c.toLowerCase()));
-    return idx === -1 ? 999 : idx;
+  function getCanonicalSiteIndex(url) {
+    const s = (url || '').toLowerCase();
+    for (let i = 0; i < CANONICAL_ORDER.length; i++) {
+      if (s.includes(CANONICAL_ORDER[i])) return i;
+    }
+    return 999;
   }
 
-  function cleanSiteLabel(urlOrName) {
-    const raw = String(urlOrName)
-      .replace(/https?:\/\//i, '')
-      .replace(/www\./i, '')
-      .replace(/\/.*$/, '')
-      .trim()
-      .toLowerCase();
+  function cleanSiteLabel(siteStr) {
+    const s = (siteStr || '').toLowerCase();
 
-    const map = {
-      // Standard Sites
-      'google.com': 'Google',
-      'github.com': 'GitHub',
-      'stackoverflow.com': 'StackOverflow',
-      'wikipedia.org': 'Wikipedia',
-      'youtube.com': 'YouTube',
-      'reddit.com': 'Reddit',
-      'microsoft.com': 'Microsoft',
-      'developer.mozilla.org': 'MDN',
-      'playwright.dev': 'Playwright',
-      'openai.com': 'OpenAI',
+    // 1. Workload Sites mapping (Short & Crisp)
+    if (s.includes("example")) return "Example";
+    if (s.includes("hacker")) return "HackerNews";
+    if (s.includes("wikipedia")) return "Wikipedia";
+    if (s.includes("httpbin")) return "HTTPBin";
+    if (s.includes("w3c")) return "W3C";
+    if (s.includes("reddit")) return "Reddit";
+    if (s.includes("youtube")) return "YouTube";
+    if (s.includes("vscode") || s.includes("vs code")) return "VS Code";
+    if (s.includes("amazon")) return "Amazon";
+    if (s.includes("unsplash")) return "Unsplash";
 
-      // Workload Sites (Lightweight)
-      'example domain': 'Example',
-      'example.com': 'Example',
-      'hacker news': 'HackerNews',
-      'news.ycombinator.com': 'HackerNews',
-      'wikipedia main': 'Wikipedia',
-      'en.wikipedia.org': 'Wikipedia',
-      'httpbin html': 'HTTPBin',
-      'httpbin.org': 'HTTPBin',
-      'w3c consortium': 'W3C',
-      'w3.org': 'W3C',
+    // 2. Standard Benchmark Sites mapping
+    if (s.includes("google")) return "Google";
+    if (s.includes("github")) return "GitHub";
+    if (s.includes("stackoverflow")) return "StackOverflow";
+    if (s.includes("microsoft")) return "Microsoft";
+    if (s.includes("mozilla") || s.includes("mdn")) return "MDN Web";
+    if (s.includes("playwright")) return "Playwright";
+    if (s.includes("openai")) return "OpenAI";
 
-      // Workload Sites (Heavyweight)
-      'reddit feed': 'Reddit (Feed)',
-      'youtube home': 'YouTube (SPA)',
-      'github vscode repo': 'GitHub (Repo)',
-      'amazon portal': 'Amazon',
-      'amazon.com': 'Amazon',
-      'unsplash media': 'Unsplash',
-      'unsplash.com': 'Unsplash',
-    };
-
-    return map[raw] || map[String(urlOrName).toLowerCase()] || urlOrName;
+    // 3. Fallback URL cleanup
+    return siteStr.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '');
   }
 
   function setChartMode(mode, btn) {
