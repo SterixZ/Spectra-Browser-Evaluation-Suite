@@ -68,6 +68,10 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
   const browser = await browserInfo.launch();
   const startupMs = performance.now() - startupStart;
 
+  const startCpuTime = getCpuTime(browserInfo.process);
+  const startWallTime = performance.now();
+  let peakMemoryMB = getMemoryMB(browserInfo.process);
+
   const context = await browser.newContext();
 
   for (const url of URLS) {
@@ -87,6 +91,9 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       const navStart = performance.now();
       await page.goto(url, { waitUntil: "load", timeout: 30000 });
       const navElapsedSec = Math.max(0.1, (performance.now() - navStart) / 1000);
+
+      const mem = getMemoryMB(browserInfo.process);
+      if (mem > peakMemoryMB) peakMemoryMB = mem;
 
       const timing = await page.evaluate(() => {
         const nav = performance.getEntriesByType("navigation")[0];
@@ -126,18 +133,16 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
     }
   }
 
-  console.log(`  Stabilizing ${STABILIZE_MS}ms before CPU/memory sampling...`);
-  await sleep(STABILIZE_MS);
-
-  const cpuPercent = await sampleAverageCpuPercent(
-    browserInfo.process,
-    CPU_SAMPLE_COUNT,
-    CPU_SAMPLE_INTERVAL_MS
-  );
-  const memoryMB = getMemoryMB(browserInfo.process);
+  // Calculate true active CPU percentage across the entire active browsing duration
+  const endCpuTime = getCpuTime(browserInfo.process);
+  const endWallTime = performance.now();
+  const totalElapsedSec = Math.max(0.1, (endWallTime - startWallTime) / 1000);
+  const totalCpuDeltaSec = Math.max(0, endCpuTime - startCpuTime);
+  const cpuPercent = Number(((totalCpuDeltaSec * 100) / (os.cpus().length * totalElapsedSec)).toFixed(2));
+  const memoryMB = Number(Math.max(peakMemoryMB, getMemoryMB(browserInfo.process)).toFixed(2));
 
   console.log(
-    `  Run ${run}: startup=${startupMs.toFixed(0)}ms cpu=${cpuPercent.toFixed(1)}% mem=${memoryMB.toFixed(1)}MB`
+    `  Run ${run}: startup=${startupMs.toFixed(0)}ms active_cpu=${cpuPercent.toFixed(1)}% mem=${memoryMB.toFixed(1)}MB`
   );
 
   metricsCsv.rows.push(

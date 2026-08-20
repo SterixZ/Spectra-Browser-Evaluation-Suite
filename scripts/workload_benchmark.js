@@ -71,19 +71,23 @@ class NavigationTelemetryMonitor {
   constructor(processName, sampleIntervalMs = 300) {
     this.processName = processName;
     this.sampleIntervalMs = sampleIntervalMs;
-    this.cpuCount = os.cpus().length;
+    this.cpuCount = os.cpus().length || 1;
     this.samples = [];
     this.peakCpu = 0;
     this.peakMemoryMB = 0;
     this.running = false;
+    this.startCpuTime = 0;
+    this.startWallTime = 0;
     this.lastCpuTime = 0;
     this.lastWallTime = 0;
   }
 
   start() {
     this.running = true;
-    this.lastCpuTime = getCpuTime(this.processName);
-    this.lastWallTime = performance.now();
+    this.startCpuTime = getCpuTime(this.processName);
+    this.startWallTime = performance.now();
+    this.lastCpuTime = this.startCpuTime;
+    this.lastWallTime = this.startWallTime;
     this.peakMemoryMB = getMemoryMB(this.processName);
 
     const pollLoop = async () => {
@@ -117,20 +121,27 @@ class NavigationTelemetryMonitor {
 
   stop() {
     this.running = false;
-    const avgCpu =
-      this.samples.length > 0
-        ? Number((this.samples.reduce((a, b) => a + b.cpu, 0) / this.samples.length).toFixed(2))
-        : 0;
-    const finalMem =
-      this.samples.length > 0
-        ? Number(this.samples[this.samples.length - 1].mem.toFixed(1))
-        : getMemoryMB(this.processName);
+    const finalCpuTime = getCpuTime(this.processName);
+    const finalWallTime = performance.now();
+    const finalMem = getMemoryMB(this.processName);
+    if (finalMem > this.peakMemoryMB) this.peakMemoryMB = finalMem;
+
+    const totalCpuSec = Math.max(0, finalCpuTime - this.startCpuTime);
+    const totalWallSec = Math.max(0.001, (finalWallTime - this.startWallTime) / 1000);
+    const totalCpuPercent = Number(((totalCpuSec * 100) / (this.cpuCount * totalWallSec)).toFixed(2));
+
+    let avgCpu = totalCpuPercent;
+    if (this.samples.length > 0) {
+      const sampleAvg = this.samples.reduce((a, b) => a + b.cpu, 0) / this.samples.length;
+      avgCpu = Number(Math.max(totalCpuPercent, sampleAvg).toFixed(2));
+    }
+    const peakCpu = Number(Math.max(this.peakCpu, avgCpu, totalCpuPercent).toFixed(2));
 
     return {
-      peakCpu: Number(this.peakCpu.toFixed(2)),
+      peakCpu,
       avgCpu,
       peakMemoryMB: Number(this.peakMemoryMB.toFixed(1)),
-      finalMemoryMB: finalMem,
+      finalMemoryMB: Number(finalMem.toFixed(1)),
     };
   }
 }
