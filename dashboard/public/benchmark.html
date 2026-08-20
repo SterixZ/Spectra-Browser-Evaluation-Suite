@@ -309,6 +309,7 @@
               <button class="tab-btn active" onclick="switchCsvTab('pageloads', this)">Page Loads</button>
               <button class="tab-btn" onclick="switchCsvTab('metrics', this)">System Metrics</button>
               <button class="tab-btn" onclick="switchCsvTab('speedometer', this)">Speedometer</button>
+              <button class="tab-btn" id="networkLogTabBtn" style="display:none;" onclick="switchCsvTab('network', this)">Network Traffic</button>
               <button class="tab-btn" id="workloadLogTabBtn" style="display:none;" onclick="switchCsvTab('workload_raw', this)">Workload Samples</button>
             </div>
             <input type="text" id="logFilter" class="theme-input" placeholder="Search logs..." onkeyup="filterLogs()" style="width:200px;" />
@@ -426,6 +427,11 @@
       const workloadTabBtn = document.getElementById("workloadLogTabBtn");
       if (workloadTabBtn) {
         workloadTabBtn.style.display = (data.workloads && data.workloads.raw?.length) ? '' : 'none';
+      }
+
+      const netTabBtn = document.getElementById("networkLogTabBtn");
+      if (netTabBtn) {
+        netTabBtn.style.display = (data.raw?.network && data.raw.network.length) ? '' : 'none';
       }
 
       const url = new URL(window.location);

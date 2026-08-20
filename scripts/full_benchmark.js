@@ -63,7 +63,7 @@ async function sampleAverageCpuPercent(processName, samples, intervalMs) {
   return total / samples;
 }
 
-async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv) {
+async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, networkCsv) {
   const startupStart = performance.now();
   const browser = await browserInfo.launch();
   const startupMs = performance.now() - startupStart;
@@ -71,19 +71,58 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv) {
   const context = await browser.newContext();
 
   for (const url of URLS) {
+    let transferBytes = 0;
+    let requestCount = 0;
     const page = await context.newPage();
+
+    page.on("response", async (res) => {
+      requestCount++;
+      const cl = res.headers()["content-length"];
+      if (cl) {
+        transferBytes += parseInt(cl, 10) || 0;
+      }
+    });
+
     try {
+      const navStart = performance.now();
       await page.goto(url, { waitUntil: "load", timeout: 30000 });
+      const navElapsedSec = Math.max(0.1, (performance.now() - navStart) / 1000);
+
       const timing = await page.evaluate(() => {
         const nav = performance.getEntriesByType("navigation")[0];
-        return nav ? nav.loadEventEnd : null;
+        const resList = performance.getEntriesByType("resource");
+        let clientBytes = nav ? (nav.transferSize || nav.encodedBodySize || 0) : 0;
+        let clientCount = 1;
+        for (const r of resList) {
+          clientCount++;
+          clientBytes += (r.transferSize || r.encodedBodySize || r.decodedBodySize || 0);
+        }
+        return {
+          loadMs: nav ? nav.loadEventEnd : null,
+          clientBytes,
+          clientCount,
+        };
       });
-      if (timing != null) {
-        pageloadCsv.rows.push(`${browserInfo.name},${run},${url},${timing.toFixed(2)}`);
-        console.log(`  ${url}: ${timing.toFixed(0)}ms load`);
+
+      const finalLoadMs = timing?.loadMs ?? (navElapsedSec * 1000);
+      const totalBytes = Math.max(transferBytes, timing?.clientBytes || 0);
+      const finalReqCount = Math.max(requestCount, timing?.clientCount || 1);
+      const transferMB = Number((totalBytes / (1024 * 1024)).toFixed(2));
+      const transferRateKBs = Number(((totalBytes / 1024) / (finalLoadMs / 1000 || 1)).toFixed(1));
+
+      if (finalLoadMs != null) {
+        pageloadCsv.rows.push(`${browserInfo.name},${run},${url},${finalLoadMs.toFixed(2)}`);
+        networkCsv.rows.push(
+          `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs}`
+        );
+        console.log(
+          `  ${url}: ${finalLoadMs.toFixed(0)}ms load | ${transferMB}MB transferred (${finalReqCount} reqs @ ${transferRateKBs} KB/s)`
+        );
       }
     } catch {
       console.log(`  ${url}: failed to load, skipping`);
+    } finally {
+      await page.close().catch(() => {});
     }
   }
 
@@ -148,13 +187,14 @@ async function runSpeedometer(browserInfo, runNumber) {
   const metricsCsv = { rows: ["Browser,Run,Startup(ms),CPU(%),Memory(MB)"] };
   const pageloadCsv = { rows: ["Browser,Run,Website,LoadTime(ms)"] };
   const speedometerCsv = { rows: ["Browser,Run,Score"] };
+  const networkCsv = { rows: ["Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s)"] };
 
   for (const browserInfo of getLaunchers()) {
     console.log(`\n========== ${browserInfo.name} ==========`);
 
     for (let run = 1; run <= RUNS; run++) {
       console.log(`\nRun ${run}/${RUNS}`);
-      await runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv);
+      await runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, networkCsv);
     }
 
     console.log(`\n-- ${browserInfo.name}: Speedometer --`);
@@ -172,9 +212,10 @@ async function runSpeedometer(browserInfo, runNumber) {
   fs.writeFileSync(path.join(RESULTS_DIR, "metrics.csv"), metricsCsv.rows.join("\n") + "\n");
   fs.writeFileSync(path.join(RESULTS_DIR, "pageload.csv"), pageloadCsv.rows.join("\n") + "\n");
   fs.writeFileSync(path.join(RESULTS_DIR, "speedometer.csv"), speedometerCsv.rows.join("\n") + "\n");
+  fs.writeFileSync(path.join(RESULTS_DIR, "network.csv"), networkCsv.rows.join("\n") + "\n");
 
   console.log("\n=============================================");
   console.log("✅ Full benchmark complete!");
-  console.log(`📁 metrics.csv, pageload.csv, speedometer.csv in ${RESULTS_DIR}`);
+  console.log(`📁 metrics.csv, pageload.csv, speedometer.csv, network.csv in ${RESULTS_DIR}`);
   console.log("=============================================");
 })();

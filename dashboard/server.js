@@ -330,6 +330,7 @@ function getBenchmarkData(resultsDir) {
   const workloadCompPath = path.join(resultsDir, "workload_comparison.csv");
   const workloadRawPath = path.join(resultsDir, "workload_raw.csv");
   const workloadSummaryPath = path.join(resultsDir, "workload_summary.csv");
+  const networkPath = path.join(resultsDir, "network.csv");
 
   let workloads = null;
   if (fs.existsSync(workloadCompPath)) {
@@ -339,6 +340,8 @@ function getBenchmarkData(resultsDir) {
       raw: fs.existsSync(workloadRawPath) ? parseCsv(workloadRawPath) : [],
     };
   }
+
+  const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
 
   return {
     summary,
@@ -351,6 +354,7 @@ function getBenchmarkData(resultsDir) {
       metrics: metrics.length ? metrics : (workloads ? workloads.raw : []),
       pageloads: pageloads.length ? pageloads : (workloads ? workloads.raw : []),
       speedometer,
+      network,
       workload_raw: workloads ? workloads.raw : [],
     },
   };

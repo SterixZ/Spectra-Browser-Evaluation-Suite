@@ -151,12 +151,13 @@ async function runWorkloadBenchmark() {
   console.log(`========================================================================\n`);
 
   const rawRows = [
-    "Browser,Category,SiteName,Url,Iteration,StartupMs,LoadTimeMs,TTFB_Ms,DomInteractiveMs,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB",
+    "Browser,Category,SiteName,Url,Iteration,StartupMs,LoadTimeMs,TTFB_Ms,DomInteractiveMs,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB,Requests,TransferMB,TransferRateKBs",
   ];
 
   const metricsRows = ["browser,run,startup_time_ms,cpu_percent,memory_mb"];
   const pageloadRows = ["browser,run,url,load_time_ms"];
   const speedometerRows = ["browser,run,score"];
+  const networkRows = ["Browser,Run,Category,SiteName,Url,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s)"];
 
   const launchers = getLaunchers();
   const aggregated = {};
@@ -178,23 +179,23 @@ async function runWorkloadBenchmark() {
       let iterMems = [];
       let iterStartupMs = 0;
 
-      // Evaluate both categories
-      for (const [category, siteList] of Object.entries(WORKLOADS)) {
+      for (const [category, siteList] of Object.entries(WORKLOAD_SITES)) {
         console.log(`    📁 Category: ${category}`);
 
-        // Cold process launch measurement
         const startStartup = performance.now();
         const browser = await browserInfo.launch();
         const startupMs = performance.now() - startStartup;
-        iterStartupMs = startupMs;
+        if (iterStartupMs === 0) iterStartupMs = startupMs;
         aggregated[browserInfo.name].startupTimes.push(startupMs);
 
         const context = await browser.newContext();
 
-        // Engine Warmup Pass (Unmetered): prime JIT compiler, GPU compositor, and child processes
+        // -------------------------------------------------------------
+        // UNMETERED WARMUP PASS: Eliminates cold V8 / Gecko engine JIT noise
+        // -------------------------------------------------------------
         const warmupPage = await context.newPage();
         try {
-          await warmupPage.goto("https://www.google.com", { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+          await warmupPage.goto(WARMUP_URL, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
           await sleep(1500);
         } catch {
         } finally {
@@ -203,7 +204,18 @@ async function runWorkloadBenchmark() {
         }
 
         for (const site of siteList) {
+          let transferBytes = 0;
+          let requestCount = 0;
           const page = await context.newPage();
+
+          page.on("response", async (res) => {
+            requestCount++;
+            const cl = res.headers()["content-length"];
+            if (cl) {
+              transferBytes += parseInt(cl, 10) || 0;
+            }
+          });
+
           try {
             // Start continuous active telemetry monitor
             const monitor = new NavigationTelemetryMonitor(browserInfo.process, 300);
@@ -224,7 +236,15 @@ async function runWorkloadBenchmark() {
             const timings = await page
               .evaluate(() => {
                 const nav = performance.getEntriesByType("navigation")[0];
-                if (!nav) return { loadTime: null, ttfb: null, domInteractive: null, domComplete: null };
+                const resList = performance.getEntriesByType("resource");
+                let clientBytes = nav ? (nav.transferSize || nav.encodedBodySize || 0) : 0;
+                let clientCount = 1;
+                for (const r of resList) {
+                  clientCount++;
+                  clientBytes += (r.transferSize || r.encodedBodySize || r.decodedBodySize || 0);
+                }
+
+                if (!nav) return { loadTime: null, ttfb: null, domInteractive: null, domComplete: null, clientBytes, clientCount };
                 return {
                   loadTime:
                     nav.loadEventEnd > 0
@@ -235,15 +255,22 @@ async function runWorkloadBenchmark() {
                   ttfb: nav.responseStart,
                   domInteractive: nav.domInteractive,
                   domComplete: nav.domComplete,
+                  clientBytes,
+                  clientCount,
                 };
               })
-              .catch(() => ({ loadTime: null, ttfb: null, domInteractive: null, domComplete: null }));
+              .catch(() => ({ loadTime: null, ttfb: null, domInteractive: null, domComplete: null, clientBytes: 0, clientCount: 0 }));
 
             const effectiveLoad =
               timings.loadTime != null && timings.loadTime > 0 ? timings.loadTime : totalNavMs;
             const ttfb = timings.ttfb != null ? timings.ttfb.toFixed(1) : "0.0";
             const domInt = timings.domInteractive != null ? timings.domInteractive.toFixed(1) : "0.0";
             const domComp = timings.domComplete != null ? timings.domComplete.toFixed(1) : "0.0";
+
+            const totalTransBytes = Math.max(transferBytes, timings.clientBytes || 0);
+            const totalRequests = Math.max(requestCount, timings.clientCount || 1);
+            const transferMB = Number((totalTransBytes / (1024 * 1024)).toFixed(2));
+            const transferRateKBs = Number(((totalTransBytes / 1024) / (effectiveLoad / 1000 || 1)).toFixed(1));
 
             // Post-load stabilization window
             await sleep(POST_LOAD_STABILIZE_MS);
@@ -263,22 +290,26 @@ async function runWorkloadBenchmark() {
                 1
               )},${effectiveLoad.toFixed(1)},${ttfb},${domInt},${domComp},${tele.peakCpu.toFixed(
                 2
-              )},${tele.avgCpu.toFixed(2)},${tele.peakMemoryMB.toFixed(1)},${tele.finalMemoryMB.toFixed(1)}`
+              )},${tele.avgCpu.toFixed(2)},${tele.peakMemoryMB.toFixed(1)},${tele.finalMemoryMB.toFixed(1)},${totalRequests},${transferMB},${transferRateKBs}`
             );
 
             pageloadRows.push(
               `${browserInfo.name},${iter},${site.url},${effectiveLoad.toFixed(2)}`
             );
 
+            networkRows.push(
+              `${browserInfo.name},${iter},${category},"${site.name}","${site.url}",${totalRequests},${totalTransBytes},${transferMB},${transferRateKBs}`
+            );
+
             console.log(
               `      • ${site.name.padEnd(20)} | Load: ${effectiveLoad
                 .toFixed(0)
-                .padStart(5)}ms | Peak RAM: ${tele.peakMemoryMB
+                .padStart(5)}ms | RAM: ${tele.peakMemoryMB
                 .toFixed(0)
-                .padStart(5)}MB | Peak CPU: ${tele.peakCpu.toFixed(1).padStart(4)}%`
+                .padStart(5)}MB | CPU: ${tele.peakCpu.toFixed(1).padStart(4)}% | Net: ${transferMB.toFixed(1)}MB (${transferRateKBs} KB/s)`
             );
           } catch (err) {
-            console.log(`      • ${site.name.padEnd(20)} | ⚠️ Timeout/Skipped (${err.message.slice(0, 30)})`);
+            console.log(`      • ${site.name.padEnd(20)} | Timeout/Skipped (${err.message.slice(0, 30)})`);
           } finally {
             await page.close().catch(() => {});
             await sleep(INTER_SITE_DELAY_MS);
@@ -300,6 +331,7 @@ async function runWorkloadBenchmark() {
   fs.writeFileSync(path.join(outputDir, "metrics.csv"), metricsRows.join("\n"), "utf8");
   fs.writeFileSync(path.join(outputDir, "pageloads.csv"), pageloadRows.join("\n"), "utf8");
   fs.writeFileSync(path.join(outputDir, "speedometer.csv"), speedometerRows.join("\n"), "utf8");
+  fs.writeFileSync(path.join(outputDir, "network.csv"), networkRows.join("\n"), "utf8");
 
   // Write Workload Specific CSVs
   fs.writeFileSync(path.join(outputDir, "workload_raw.csv"), rawRows.join("\n"), "utf8");
