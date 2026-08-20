@@ -51,16 +51,85 @@ function getMemoryMB(processName) {
   }
 }
 
-async function sampleAverageCpuPercent(processName, samples, intervalMs) {
-  let total = 0;
-  for (let i = 0; i < samples; i++) {
-    const start = getCpuTime(processName);
-    await sleep(intervalMs);
-    const end = getCpuTime(processName);
-    const cpuSeconds = end - start;
-    total += (cpuSeconds * 100) / (os.cpus().length * (intervalMs / 1000));
+// Continuous Active-Navigation Telemetry Monitor
+// Samples process CPU & WorkingSet64 every 300ms during page navigation and render
+class NavigationTelemetryMonitor {
+  constructor(processName, sampleIntervalMs = 300) {
+    this.processName = processName;
+    this.sampleIntervalMs = sampleIntervalMs;
+    this.cpuCount = os.cpus().length || 1;
+    this.samples = [];
+    this.peakCpu = 0;
+    this.peakMemoryMB = 0;
+    this.running = false;
+    this.startCpuTime = 0;
+    this.startWallTime = 0;
+    this.lastCpuTime = 0;
+    this.lastWallTime = 0;
   }
-  return total / samples;
+
+  start() {
+    this.running = true;
+    this.startCpuTime = getCpuTime(this.processName);
+    this.startWallTime = performance.now();
+    this.lastCpuTime = this.startCpuTime;
+    this.lastWallTime = this.startWallTime;
+    this.peakMemoryMB = getMemoryMB(this.processName);
+
+    const pollLoop = async () => {
+      while (this.running) {
+        await sleep(this.sampleIntervalMs);
+        if (!this.running) break;
+
+        const currentCpuTime = getCpuTime(this.processName);
+        const currentWallTime = performance.now();
+        const currentMem = getMemoryMB(this.processName);
+
+        const deltaCpuSec = currentCpuTime - this.lastCpuTime;
+        const deltaWallSec = (currentWallTime - this.lastWallTime) / 1000;
+
+        if (deltaWallSec > 0 && deltaCpuSec >= 0) {
+          const cpuPercent = Number(
+            Math.max(0, Math.min(100, (deltaCpuSec * 100) / (this.cpuCount * deltaWallSec))).toFixed(2)
+          );
+          this.samples.push({ cpu: cpuPercent, mem: currentMem });
+          if (cpuPercent > this.peakCpu) this.peakCpu = cpuPercent;
+          if (currentMem > this.peakMemoryMB) this.peakMemoryMB = currentMem;
+        }
+
+        this.lastCpuTime = currentCpuTime;
+        this.lastWallTime = currentWallTime;
+      }
+    };
+
+    pollLoop();
+  }
+
+  stop() {
+    this.running = false;
+    const finalCpuTime = getCpuTime(this.processName);
+    const finalWallTime = performance.now();
+    const finalMem = getMemoryMB(this.processName);
+    if (finalMem > this.peakMemoryMB) this.peakMemoryMB = finalMem;
+
+    const totalCpuSec = Math.max(0, finalCpuTime - this.startCpuTime);
+    const totalWallSec = Math.max(0.001, (finalWallTime - this.startWallTime) / 1000);
+    const totalCpuPercent = Number(((totalCpuSec * 100) / (this.cpuCount * totalWallSec)).toFixed(2));
+
+    let avgCpu = totalCpuPercent;
+    if (this.samples.length > 0) {
+      const sampleAvg = this.samples.reduce((a, b) => a + b.cpu, 0) / this.samples.length;
+      avgCpu = Number(Math.max(totalCpuPercent, sampleAvg).toFixed(2));
+    }
+    const peakCpu = Number(Math.max(this.peakCpu, avgCpu, totalCpuPercent).toFixed(2));
+
+    return {
+      peakCpu,
+      avgCpu,
+      peakMemoryMB: Number(this.peakMemoryMB.toFixed(1)),
+      finalMemoryMB: Number(finalMem.toFixed(1)),
+    };
+  }
 }
 
 async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, networkCsv) {
@@ -70,7 +139,9 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
 
   const startCpuTime = getCpuTime(browserInfo.process);
   const startWallTime = performance.now();
-  let peakMemoryMB = getMemoryMB(browserInfo.process);
+  let peakRunMemoryMB = getMemoryMB(browserInfo.process);
+  let peakRunCpuPercent = 0;
+  let siteCpuAverages = [];
 
   const context = await browser.newContext();
 
@@ -88,12 +159,12 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
     });
 
     try {
+      const monitor = new NavigationTelemetryMonitor(browserInfo.process, 300);
+      monitor.start();
+
       const navStart = performance.now();
       await page.goto(url, { waitUntil: "load", timeout: 30000 });
       const navElapsedSec = Math.max(0.1, (performance.now() - navStart) / 1000);
-
-      const mem = getMemoryMB(browserInfo.process);
-      if (mem > peakMemoryMB) peakMemoryMB = mem;
 
       const timing = await page.evaluate(() => {
         const nav = performance.getEntriesByType("navigation")[0];
@@ -111,6 +182,11 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
         };
       });
 
+      const stats = monitor.stop();
+      if (stats.peakMemoryMB > peakRunMemoryMB) peakRunMemoryMB = stats.peakMemoryMB;
+      if (stats.peakCpu > peakRunCpuPercent) peakRunCpuPercent = stats.peakCpu;
+      siteCpuAverages.push(stats.avgCpu);
+
       const finalLoadMs = timing?.loadMs ?? (navElapsedSec * 1000);
       const totalBytes = Math.max(transferBytes, timing?.clientBytes || 0);
       const finalReqCount = Math.max(requestCount, timing?.clientCount || 1);
@@ -123,7 +199,7 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
           `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs}`
         );
         console.log(
-          `  ${url}: ${finalLoadMs.toFixed(0)}ms load | ${transferMB}MB transferred (${finalReqCount} reqs @ ${transferRateKBs} KB/s)`
+          `  ${url}: ${finalLoadMs.toFixed(0)}ms load | peak_cpu=${stats.peakCpu}% peak_mem=${stats.peakMemoryMB}MB | ${transferMB}MB (${finalReqCount} reqs @ ${transferRateKBs} KB/s)`
         );
       }
     } catch {
@@ -133,20 +209,26 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
     }
   }
 
-  // Calculate true active CPU percentage across the entire active browsing duration
+  // Calculate cumulative active CPU across the entire multi-site session
   const endCpuTime = getCpuTime(browserInfo.process);
   const endWallTime = performance.now();
   const totalElapsedSec = Math.max(0.1, (endWallTime - startWallTime) / 1000);
   const totalCpuDeltaSec = Math.max(0, endCpuTime - startCpuTime);
-  const cpuPercent = Number(((totalCpuDeltaSec * 100) / (os.cpus().length * totalElapsedSec)).toFixed(2));
-  const memoryMB = Number(Math.max(peakMemoryMB, getMemoryMB(browserInfo.process)).toFixed(2));
+  const cumulativeCpuPercent = Number(((totalCpuDeltaSec * 100) / (os.cpus().length * totalElapsedSec)).toFixed(2));
+  
+  const avgSiteCpu = siteCpuAverages.length > 0
+    ? Number((siteCpuAverages.reduce((a, b) => a + b, 0) / siteCpuAverages.length).toFixed(2))
+    : cumulativeCpuPercent;
+
+  const finalActiveCpu = Math.max(cumulativeCpuPercent, avgSiteCpu);
+  const memoryMB = Number(Math.max(peakRunMemoryMB, getMemoryMB(browserInfo.process)).toFixed(2));
 
   console.log(
-    `  Run ${run}: startup=${startupMs.toFixed(0)}ms active_cpu=${cpuPercent.toFixed(1)}% mem=${memoryMB.toFixed(1)}MB`
+    `  ▶ Run ${run} Summary: startup=${startupMs.toFixed(0)}ms active_cpu=${finalActiveCpu.toFixed(1)}% (peak_burst=${peakRunCpuPercent.toFixed(1)}%) peak_mem=${memoryMB.toFixed(1)}MB`
   );
 
   metricsCsv.rows.push(
-    `${browserInfo.name},${run},${startupMs.toFixed(2)},${cpuPercent.toFixed(2)},${memoryMB.toFixed(2)}`
+    `${browserInfo.name},${run},${startupMs.toFixed(2)},${finalActiveCpu.toFixed(2)},${memoryMB.toFixed(2)}`
   );
 
   await browser.close();
