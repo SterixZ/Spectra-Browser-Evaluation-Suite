@@ -708,15 +708,48 @@
     }).join('');
   }
 
-  function getCanonicalSiteIndex(url) {
-    const norm = url.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '').toLowerCase();
-    const idx = CANONICAL_SITES.findIndex(c => c.toLowerCase().includes(norm));
+  const CANONICAL_SITES = [
+    // Standard Canonical 10
+    "https://www.google.com",
+    "https://github.com",
+    "https://stackoverflow.com",
+    "https://www.wikipedia.org",
+    "https://www.youtube.com",
+    "https://www.reddit.com",
+    "https://www.microsoft.com",
+    "https://developer.mozilla.org",
+    "https://playwright.dev",
+    "https://openai.com",
+
+    // Workload Sites (5 Light + 5 Heavy)
+    "Example Domain", "https://example.com", "example.com",
+    "Hacker News", "https://news.ycombinator.com", "news.ycombinator.com",
+    "Wikipedia Main", "https://en.wikipedia.org/wiki/Main_Page", "wikipedia.org",
+    "HTTPBin HTML", "https://httpbin.org/html", "httpbin.org",
+    "W3C Consortium", "https://www.w3.org", "w3.org",
+    "Reddit Feed", "https://www.reddit.com", "reddit.com",
+    "YouTube Home", "https://www.youtube.com", "youtube.com",
+    "GitHub VSCode Repo", "https://github.com/microsoft/vscode", "github.com",
+    "Amazon Portal", "https://www.amazon.com", "amazon.com",
+    "Unsplash Media", "https://unsplash.com", "unsplash.com",
+  ];
+
+  function getCanonicalSiteIndex(urlOrName) {
+    const raw = String(urlOrName).toLowerCase();
+    const idx = CANONICAL_SITES.findIndex(c => c.toLowerCase() === raw || raw.includes(c.toLowerCase()));
     return idx === -1 ? 999 : idx;
   }
 
-  function cleanSiteLabel(url) {
-    const raw = url.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '').toLowerCase();
+  function cleanSiteLabel(urlOrName) {
+    const raw = String(urlOrName)
+      .replace(/https?:\/\//i, '')
+      .replace(/www\./i, '')
+      .replace(/\/.*$/, '')
+      .trim()
+      .toLowerCase();
+
     const map = {
+      // Standard Sites
       'google.com': 'Google',
       'github.com': 'GitHub',
       'stackoverflow.com': 'StackOverflow',
@@ -724,11 +757,33 @@
       'youtube.com': 'YouTube',
       'reddit.com': 'Reddit',
       'microsoft.com': 'Microsoft',
-      'developer.mozilla.org': 'MDN Web',
+      'developer.mozilla.org': 'MDN',
       'playwright.dev': 'Playwright',
       'openai.com': 'OpenAI',
+
+      // Workload Sites (Lightweight)
+      'example domain': 'Example',
+      'example.com': 'Example',
+      'hacker news': 'HackerNews',
+      'news.ycombinator.com': 'HackerNews',
+      'wikipedia main': 'Wikipedia',
+      'en.wikipedia.org': 'Wikipedia',
+      'httpbin html': 'HTTPBin',
+      'httpbin.org': 'HTTPBin',
+      'w3c consortium': 'W3C',
+      'w3.org': 'W3C',
+
+      // Workload Sites (Heavyweight)
+      'reddit feed': 'Reddit (Feed)',
+      'youtube home': 'YouTube (SPA)',
+      'github vscode repo': 'GitHub (Repo)',
+      'amazon portal': 'Amazon',
+      'amazon.com': 'Amazon',
+      'unsplash media': 'Unsplash',
+      'unsplash.com': 'Unsplash',
     };
-    return map[raw] || raw;
+
+    return map[raw] || map[String(urlOrName).toLowerCase()] || urlOrName;
   }
 
   function setChartMode(mode, btn) {
