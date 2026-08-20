@@ -13,7 +13,7 @@ A statistical performance evaluation platform and real-time telemetry console fo
 * **Workload Benchmarks (Lightweight vs. Heavyweight)**: Evaluates how browsers scale under stress across 5 lightweight document sites vs. 5 heavyweight dynamic SPAs (5 iterations each) with overhead inflation multipliers.
 * **Raw Observation Logs**: Filterable live search table inspecting raw sample rows.
 
-### 2. Live Telemetry Console (`/`)
+### 2. Live Dashboard (`/`)
 * **Real-time 1-second sampling** of CPU utilization (`%`), physical RAM working set (`MB`), network throughput (`KB/s`), and active navigation URLs via OS process inspection.
 * **Targeted 0–10% CPU Scale**: Subtle 1%–5% processor load variations render as responsive wave graphs instead of flat lines.
 * **1-Click Remote Launch & Stop Controls** for Chrome, Edge, and Firefox.
@@ -62,7 +62,7 @@ npm install
 npm run dashboard
 ```
 * **Evaluation Dashboard**: [http://localhost:3000/benchmark.html](http://localhost:3000/benchmark.html)
-* **Live Telemetry**: [http://localhost:3000](http://localhost:3000)
+* **Live Dashboard**: [http://localhost:3000](http://localhost:3000)
 
 ---
 
@@ -73,7 +73,7 @@ BrowserPerformance/
 ├── dashboard/
 │   ├── public/
 │   │   ├── benchmark.html    # Statistical Scorecard & Workload UI
-│   │   ├── index.html        # Real-time Live Telemetry Console
+│   │   ├── index.html        # Real-time Live Dashboard Console
 │   │   ├── theme.css         # Enterprise Design System
 │   │   ├── theme-toggle.js   # Light/Dark Mode Manager
 │   │   └── chart.umd.min.js  # Chart.js library

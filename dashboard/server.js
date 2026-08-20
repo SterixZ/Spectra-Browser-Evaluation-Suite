@@ -484,6 +484,6 @@ server.listen(PORT, () => {
   console.log(`\n========================================================`);
   console.log(`🌐 BROWSER PERFORMANCE DASHBOARD`);
   console.log(`📡 Evaluation Console: http://localhost:${PORT}/benchmark.html`);
-  console.log(`⚡ Live Telemetry:     http://localhost:${PORT}`);
+  console.log(`  Live Dashboard:     http://localhost:${PORT}`);
   console.log(`========================================================\n`);
 });
