@@ -199,7 +199,10 @@ function computeCdfData(values) {
 function getBenchmarkData(resultsDir) {
   const metrics = parseCsv(path.join(resultsDir, "metrics.csv"));
   const speedometer = parseCsv(path.join(resultsDir, "speedometer.csv"));
-  const pageloads = parseCsv(path.join(resultsDir, "pageload.csv"));
+  const pageloads = parseCsv(path.join(resultsDir, "pageload.csv")).concat(
+    parseCsv(path.join(resultsDir, "pageloads.csv"))
+  );
+  const workloadRaw = parseCsv(path.join(resultsDir, "workload_raw.csv"));
 
   const raw = {
     startup: {},
@@ -219,36 +222,77 @@ function getBenchmarkData(resultsDir) {
   };
 
   metrics.forEach((r) => {
-    if (!r.Browser) return;
-    init(r.Browser);
-    if (r["Startup(ms)"]) raw.startup[r.Browser].push(Number(r["Startup(ms)"]));
-    if (r["CPU(%)"]) raw.cpu[r.Browser].push(Number(r["CPU(%)"]));
-    if (r["Memory(MB)"]) raw.memory[r.Browser].push(Number(r["Memory(MB)"]));
+    const b = r.Browser || r.browser;
+    if (!b) return;
+    init(b);
+    const startup = Number(r["Startup(ms)"] || r.startup_time_ms || r.StartupMs);
+    if (!isNaN(startup) && startup > 0) raw.startup[b].push(startup);
+    const cpu = Number(r["CPU(%)"] || r.cpu_percent || r.PeakCpuPercent || r.CpuPercent);
+    if (!isNaN(cpu)) raw.cpu[b].push(cpu);
+    const mem = Number(r["Memory(MB)"] || r.memory_mb || r.PeakMemoryMB || r.MemoryMB);
+    if (!isNaN(mem)) raw.memory[b].push(mem);
   });
 
   speedometer.forEach((r) => {
-    if (!r.Browser) return;
-    init(r.Browser);
-    if (r.Score) raw.speedometer[r.Browser].push(Number(r.Score));
+    const b = r.Browser || r.browser;
+    if (!b) return;
+    init(b);
+    const score = Number(r.Score || r.score);
+    if (!isNaN(score) && score > 0) raw.speedometer[b].push(score);
   });
 
   pageloads.forEach((r) => {
-    if (!r.Browser || !r["LoadTime(ms)"]) return;
-    init(r.Browser);
-    const t = Number(r["LoadTime(ms)"]);
-    raw.pageload[r.Browser].push(t);
+    const b = r.Browser || r.browser;
+    const t = Number(r["LoadTime(ms)"] || r.load_time_ms || r.LoadTimeMs);
+    if (!b || isNaN(t) || t <= 0) return;
+    init(b);
+    raw.pageload[b].push(t);
 
-    const site = r.Website || "unknown";
+    const site = r.Website || r.url || r.Url || r.SiteName || "unknown";
     raw.pageloadBySite[site] ||= {};
-    raw.pageloadBySite[site][r.Browser] ||= [];
-    raw.pageloadBySite[site][r.Browser].push(t);
+    raw.pageloadBySite[site][b] ||= [];
+    raw.pageloadBySite[site][b].push(t);
   });
 
-  const browsers = Object.keys(raw.startup);
+  // If standard metrics weren't present, populate from workload_raw
+  workloadRaw.forEach((r) => {
+    const b = r.Browser || r.browser;
+    if (!b) return;
+    init(b);
+
+    const startup = Number(r.StartupMs || r["Startup(ms)"] || r.startup_time_ms);
+    if (!isNaN(startup) && startup > 0 && !raw.startup[b].length) raw.startup[b].push(startup);
+
+    const cpu = Number(r.PeakCpuPercent || r.CpuPercent || r["CPU(%)"] || r.cpu_percent);
+    if (!isNaN(cpu)) raw.cpu[b].push(cpu);
+
+    const mem = Number(r.PeakMemoryMB || r.MemoryMB || r["Memory(MB)"] || r.memory_mb);
+    if (!isNaN(mem)) raw.memory[b].push(mem);
+
+    const loadTime = Number(r.LoadTimeMs || r["LoadTime(ms)"] || r.load_time_ms);
+    if (!isNaN(loadTime) && loadTime > 0) {
+      if (!pageloads.length) raw.pageload[b].push(loadTime);
+      const site = r.SiteName || r.url || r.Url || r.Website || "unknown";
+      raw.pageloadBySite[site] ||= {};
+      raw.pageloadBySite[site][b] ||= [];
+      if (!pageloads.length) raw.pageloadBySite[site][b].push(loadTime);
+    }
+  });
+
+  const browsers = Array.from(
+    new Set([
+      ...Object.keys(raw.startup),
+      ...Object.keys(raw.cpu),
+      ...Object.keys(raw.memory),
+      ...Object.keys(raw.pageload),
+    ])
+  );
+
   const summary = {};
   const cdf = {};
 
   browsers.forEach((b) => {
+    init(b);
     summary[b] = {
       startup: computeDescriptiveStats(raw.startup[b]),
       cpu: computeDescriptiveStats(raw.cpu[b]),
@@ -304,8 +348,8 @@ function getBenchmarkData(resultsDir) {
     pairwise,
     workloads,
     raw: {
-      metrics,
-      pageloads,
+      metrics: metrics.length ? metrics : (workloads ? workloads.raw : []),
+      pageloads: pageloads.length ? pageloads : (workloads ? workloads.raw : []),
       speedometer,
       workload_raw: workloads ? workloads.raw : [],
     },
@@ -318,8 +362,13 @@ function listRunFolders() {
   const runs = entries
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
-    .filter((name) => name === "results" || name.startsWith("results_"))
-    .filter((name) => fs.existsSync(path.join(PROJECT_ROOT, name, "metrics.csv")));
+    .filter((name) => name === "results" || name.startsWith("results_") || name.startsWith("workloads_"))
+    .filter((name) =>
+      fs.existsSync(path.join(PROJECT_ROOT, name, "metrics.csv")) ||
+      fs.existsSync(path.join(PROJECT_ROOT, name, "workload_raw.csv")) ||
+      fs.existsSync(path.join(PROJECT_ROOT, name, "pageload.csv")) ||
+      fs.existsSync(path.join(PROJECT_ROOT, name, "pageloads.csv"))
+    );
 
   runs.sort((a, b) => (a === "results" ? -1 : b === "results" ? 1 : b.localeCompare(a)));
   return runs;
