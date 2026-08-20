@@ -206,10 +206,39 @@
     <!-- ================================================================= -->
     <div id="view-table" class="page-view">
       
-      <!-- 1. Side-by-Side Performance Matrix -->
-      <div class="card" style="margin-bottom:24px;">
+      <!-- 1. Workload Comparative Output Matrix (Shown if workload data exists) -->
+      <div class="card" id="workloadSection" style="display:none; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);">Workload Comparative Outputs: Lightweight vs. Heavyweight</div>
+            <div style="font-size:13px; color:var(--muted);">Direct side-by-side comparison across 5 lightweight and 5 heavyweight websites with overhead inflation multipliers</div>
+          </div>
+          <span class="pill-tag pill-purple">5 Light vs 5 Heavy Sites</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Browser</th>
+                <th>Lightweight Mean Load</th>
+                <th>Heavyweight Mean Load</th>
+                <th>Load Inflation Multiplier</th>
+                <th>Lightweight Peak RAM</th>
+                <th>Heavyweight Peak RAM</th>
+                <th>RAM Inflation Multiplier</th>
+                <th>Heavy Peak CPU</th>
+                <th>Overhead Verdict</th>
+              </tr>
+            </thead>
+            <tbody id="workloadCompBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. Standard Side-by-Side Performance Matrix -->
+      <div class="card" id="standardTableCard" style="margin-bottom:24px;">
         <div style="margin-bottom:18px;">
-          <div style="font-size:18px; font-weight:800; color:var(--text);">Side-by-Side Performance Scorecard</div>
+          <div style="font-size:18px; font-weight:800; color:var(--text);">Overall Performance Scorecard</div>
           <div style="font-size:13px; color:var(--muted);">Aggregated metrics and performance rankings across all test categories</div>
         </div>
         <div class="table-scroll">
@@ -231,11 +260,11 @@
         </div>
       </div>
 
-      <!-- 2. The Ratio Game (Raj Jain Ch. 11.5) -->
+      <!-- 3. The Ratio Game (Raj Jain Ch. 11.5) -->
       <div class="card" style="margin-bottom:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
           <div>
-            <div style="font-size:18px; font-weight:800; color:var(--text);">The Ratio Game (Normalized Performance Matrix)</div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);">The Ratio Game (Normalized Baseline Matrix)</div>
             <div style="font-size:13px; color:var(--muted);">Normalizes all metrics to an unbiased baseline using Geometric Mean Ratios (&gt; 1.00x is superior)</div>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
@@ -258,32 +287,6 @@
               </tr>
             </thead>
             <tbody id="ratioGameTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 3. Workload Overhead & Inflation Ratios (Shown if workload data exists in this run) -->
-      <div class="card" id="workloadSection" style="display:none;">
-        <div style="margin-bottom:18px;">
-          <div style="font-size:18px; font-weight:800; color:var(--text);">Workload Stress: Lightweight vs Heavyweight Inflation</div>
-          <div style="font-size:13px; color:var(--muted);">Performance degradation factor when transitioning from text documents to heavy SPAs</div>
-        </div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Browser</th>
-                <th>Lightweight Mean Load</th>
-                <th>Heavyweight Mean Load</th>
-                <th>Load Inflation Factor</th>
-                <th>Lightweight RAM</th>
-                <th>Heavyweight RAM</th>
-                <th>RAM Inflation Factor</th>
-                <th>Heavy CPU</th>
-                <th>Stability Verdict</th>
-              </tr>
-            </thead>
-            <tbody id="workloadCompBody"></tbody>
           </table>
         </div>
       </div>
@@ -457,7 +460,7 @@
   }
 
   function renderOverview(data) {
-    const { summary } = data;
+    const { summary, workloads } = data;
     const browsers = Object.keys(summary);
     if (!browsers.length) return;
 
@@ -467,25 +470,42 @@
 
     const wins = {};
     browsers.forEach(b => wins[b] = 0);
-    wins[bestStartup]++;
-    wins[bestCpu]++;
-    wins[bestMem]++;
+    if (summary[bestStartup]?.startup.mean > 0) wins[bestStartup]++;
+    if (summary[bestCpu]?.cpu.mean > 0) wins[bestCpu]++;
+    if (summary[bestMem]?.memory.mean > 0) wins[bestMem]++;
 
     const overallWinner = [...browsers].sort((a,b) => wins[b] - wins[a])[0];
 
-    document.getElementById("winnerHeadline").innerText = `${overallWinner} is the Top Performer Overall`;
-    document.getElementById("winnerText").innerHTML = `
-      <strong>${overallWinner}</strong> achieved the optimal balance of fast execution and system efficiency.
-      It demonstrated the fastest cold startup speed (${summary[bestStartup].startup.mean.toFixed(0)} ms) and solid resource utilization.
-    `;
+    if (workloads && workloads.comparison && workloads.comparison.length) {
+      const sortedByInflation = [...workloads.comparison].sort((a, b) => (parseFloat(a.LoadInflationRatio) || 99) - (parseFloat(b.LoadInflationRatio) || 99));
+      const bestScaling = sortedByInflation[0];
 
-    document.getElementById("winnerChips").innerHTML = `
-      <span class="pill-tag pill-green">🚀 Fastest Startup: ${bestStartup}</span>
-      <span class="pill-tag pill-blue">⚡ Lowest CPU: ${bestCpu}</span>
-      <span class="pill-tag pill-purple">💾 Lowest RAM: ${bestMem}</span>
-    `;
+      document.getElementById("winnerHeadline").innerText = `${overallWinner} Leads Overall — ${bestScaling.Browser} Demonstrates Lowest Heavy Overhead`;
+      document.getElementById("winnerText").innerHTML = `
+        <strong>${overallWinner}</strong> delivered the highest efficiency across tested workloads.
+        <strong>${bestScaling.Browser}</strong> achieved the best scaling resilience under heavy SPA load with only a <strong>${bestScaling.LoadInflationRatio}</strong> load inflation multiplier.
+      `;
 
-    const sampleN = summary[overallWinner].startup.n || 10;
+      document.getElementById("winnerChips").innerHTML = `
+        <span class="pill-tag pill-green">⚡ Best Scaling: ${bestScaling.Browser} (${bestScaling.LoadInflationRatio})</span>
+        <span class="pill-tag pill-blue">💾 Lowest RAM: ${bestMem}</span>
+        <span class="pill-tag pill-purple">🚀 Fastest Startup: ${bestStartup}</span>
+      `;
+    } else {
+      document.getElementById("winnerHeadline").innerText = `${overallWinner} is the Top Performer Overall`;
+      document.getElementById("winnerText").innerHTML = `
+        <strong>${overallWinner}</strong> achieved the optimal balance of fast execution and system efficiency.
+        It demonstrated the fastest cold startup speed (${summary[bestStartup]?.startup.mean.toFixed(0) || 0} ms) and solid resource utilization.
+      `;
+
+      document.getElementById("winnerChips").innerHTML = `
+        <span class="pill-tag pill-green">🚀 Fastest Startup: ${bestStartup}</span>
+        <span class="pill-tag pill-blue">⚡ Lowest CPU: ${bestCpu}</span>
+        <span class="pill-tag pill-purple">💾 Lowest RAM: ${bestMem}</span>
+      `;
+    }
+
+    const sampleN = summary[overallWinner]?.startup.n || summary[overallWinner]?.pageload.n || 5;
     document.getElementById("testRunsCount").innerText = `${sampleN} sample iterations`;
   }
 
