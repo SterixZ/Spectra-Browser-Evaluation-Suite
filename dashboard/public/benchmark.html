@@ -704,8 +704,9 @@
   const CANONICAL_ORDER = [
     // Standard benchmark canonical list
     "google", "github.com", "stackoverflow", "wikipedia", "youtube", "reddit", "microsoft", "mozilla", "playwright", "openai",
-    // Workload benchmark canonical list (5 Light followed by 5 Heavy)
-    "example", "hacker", "wikipedia", "httpbin", "w3c", "reddit", "youtube", "vscode", "amazon", "unsplash"
+    // Workload benchmark canonical list (5 Ultra-Light followed by 5 Heavy SPAs)
+    "example", "cern", "theproject", "npr", "duckduckgo", "httpbin", "hacker", "wikipedia", "w3c",
+    "youtube", "vscode", "verge", "reddit", "amazon", "unsplash"
   ];
 
   function getCanonicalSiteIndex(url) {
@@ -719,28 +720,34 @@
   function cleanSiteLabel(siteStr) {
     const s = (siteStr || '').toLowerCase();
 
-    // 1. Workload Sites mapping (Short & Crisp)
+    // 1. Ultra-Lightweight Document Sites (Crisp & Short)
     if (s.includes("example")) return "Example";
-    if (s.includes("hacker")) return "HackerNews";
-    if (s.includes("wikipedia")) return "Wikipedia";
+    if (s.includes("cern") || s.includes("theproject")) return "CERN WWW";
+    if (s.includes("npr")) return "NPR Text";
+    if (s.includes("duckduckgo") || s.includes("ddg")) return "DDG Lite";
     if (s.includes("httpbin")) return "HTTPBin";
+    if (s.includes("hacker")) return "HackerNews";
     if (s.includes("w3c")) return "W3C";
-    if (s.includes("reddit")) return "Reddit";
+
+    // 2. Extreme Heavyweight Dynamic SPAs
     if (s.includes("youtube")) return "YouTube";
     if (s.includes("vscode") || s.includes("vs code")) return "VS Code";
+    if (s.includes("verge")) return "The Verge";
+    if (s.includes("reddit")) return "Reddit";
     if (s.includes("amazon")) return "Amazon";
     if (s.includes("unsplash")) return "Unsplash";
 
-    // 2. Standard Benchmark Sites mapping
+    // 3. Standard Benchmark Sites mapping
     if (s.includes("google")) return "Google";
     if (s.includes("github")) return "GitHub";
     if (s.includes("stackoverflow")) return "StackOverflow";
+    if (s.includes("wikipedia")) return "Wikipedia";
     if (s.includes("microsoft")) return "Microsoft";
     if (s.includes("mozilla") || s.includes("mdn")) return "MDN Web";
     if (s.includes("playwright")) return "Playwright";
     if (s.includes("openai")) return "OpenAI";
 
-    // 3. Fallback URL cleanup
+    // 4. Fallback URL cleanup
     return siteStr.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '');
   }
 

@@ -22,21 +22,23 @@ const POST_LOAD_STABILIZE_MS = 2000;    // 2s post-load settle before stopping p
 const INTER_SITE_DELAY_MS = 5000;       // 5s strict rest between each website
 const INTER_ITERATION_DELAY_MS = 5000;  // 5s strict rest between iterations
 
-// Categorized Workload Websites (5 Ultra-Fast Document Sites vs. 5 Heavy Dynamic SPAs)
+const WARMUP_URL = "https://www.google.com";
+
+// Categorized Workload Websites: 5 Ultra-Fast Semantic Documents vs. 5 Extreme Heavyweight SPAs
 const WORKLOADS = {
   Lightweight: [
     { name: "Example Domain", url: "https://example.com" },
-    { name: "Hacker News", url: "https://news.ycombinator.com" },
-    { name: "Wikipedia Main", url: "https://en.wikipedia.org/wiki/Main_Page" },
+    { name: "CERN WWW Project", url: "https://info.cern.ch/hypertext/WWW/TheProject.html" },
+    { name: "NPR Text News", url: "https://text.npr.org" },
+    { name: "DuckDuckGo Lite", url: "https://lite.duckduckgo.com/lite" },
     { name: "HTTPBin HTML", url: "https://httpbin.org/html" },
-    { name: "W3C Consortium", url: "https://www.w3.org" },
   ],
   Heavyweight: [
-    { name: "Reddit Feed", url: "https://www.reddit.com" },
     { name: "YouTube Home", url: "https://www.youtube.com" },
     { name: "GitHub VSCode Repo", url: "https://github.com/microsoft/vscode" },
+    { name: "The Verge Media", url: "https://www.theverge.com" },
+    { name: "Reddit Feed", url: "https://www.reddit.com" },
     { name: "Amazon Portal", url: "https://www.amazon.com" },
-    { name: "Unsplash Media", url: "https://unsplash.com" },
   ],
 };
 
@@ -179,7 +181,7 @@ async function runWorkloadBenchmark() {
       let iterMems = [];
       let iterStartupMs = 0;
 
-      for (const [category, siteList] of Object.entries(WORKLOAD_SITES)) {
+      for (const [category, siteList] of Object.entries(WORKLOADS)) {
         console.log(`    📁 Category: ${category}`);
 
         const startStartup = performance.now();
