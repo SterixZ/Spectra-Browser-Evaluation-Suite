@@ -1,17 +1,17 @@
-# BrowserPerformance 2.0: Enterprise Web Browser Evaluation Suite
+# Spectra: Enterprise Browser Systems Evaluation Suite
 
-A statistical performance evaluation platform and real-time telemetry console for web browsers (**Google Chrome**, **Microsoft Edge**, and **Mozilla Firefox**), built on the rigorous principles of **Raj K. Jain’s *The Art of Computer Systems Performance Analysis***.
+A statistical performance evaluation platform and real-time telemetry console for modern web browsers (**Google Chrome**, **Microsoft Edge**, and **Mozilla Firefox**), built on the rigorous methodology of **Raj K. Jain’s *The Art of Computer Systems Performance Analysis***.
 
 ---
 
-## 🌟 Key Features
+## Architecture & Capabilities
 
 ### 1. Executive Statistical Evaluation Dashboard (`/benchmark.html`)
-* **👑 Overview Scorecard**: Executive Winner Banner with 1-sentence takeaways and 4 high-contrast KPI cards (Startup Speed, CPU Efficiency, RAM Footprint, Web Responsiveness).
-* **📈 Visual Charts**: Full-width interactive Chart.js bar graphs comparing Page Load latency across 10 canonical websites, plus a 1-click **Combined System Resources view** (Startup / CPU / RAM).
-* **📋 Comparison Scorecard & The Ratio Game (Jain Ch. 11.5)**: Side-by-side performance matrix combined with an interactive baseline-normalized **Geometric Mean Ratio** matrix to eliminate baseline-selection bias.
-* **⚡ Workload Benchmarks (Lightweight vs. Heavyweight)**: Evaluates how browsers scale under stress across 5 lightweight document sites vs. 5 heavyweight dynamic SPAs (5 iterations each) with overhead inflation multipliers.
-* **📑 Raw Observation Logs**: Filterable live search table inspecting raw CSV sample rows.
+* **Overview Scorecard**: Executive top performer summary with key takeaways and 4 high-contrast KPI cards (Startup Speed, CPU Efficiency, RAM Footprint, Web Responsiveness).
+* **Visual Charts**: Full-width interactive Chart.js bar graphs comparing Page Load latency across 10 canonical websites, plus a 1-click **Combined System Resources view** (Startup / CPU / RAM).
+* **Comparison Scorecard & The Ratio Game (Jain Ch. 11.5)**: Side-by-side performance matrix combined with an interactive baseline-normalized **Geometric Mean Ratio** matrix to eliminate baseline-selection bias.
+* **Workload Benchmarks (Lightweight vs. Heavyweight)**: Evaluates how browsers scale under stress across 5 lightweight document sites vs. 5 heavyweight dynamic SPAs (5 iterations each) with overhead inflation multipliers.
+* **Raw Observation Logs**: Filterable live search table inspecting raw sample rows.
 
 ### 2. Live Telemetry Console (`/`)
 * **Real-time 1-second sampling** of CPU utilization (`%`), physical RAM working set (`MB`), network throughput (`KB/s`), and active navigation URLs via OS process inspection.
@@ -27,7 +27,7 @@ A statistical performance evaluation platform and real-time telemetry console fo
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 * **Node.js**: v18 or newer
@@ -66,7 +66,7 @@ npm run dashboard
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 BrowserPerformance/
@@ -74,7 +74,7 @@ BrowserPerformance/
 │   ├── public/
 │   │   ├── benchmark.html    # Statistical Scorecard & Workload UI
 │   │   ├── index.html        # Real-time Live Telemetry Console
-│   │   ├── theme.css         # Modern Enterprise Design System
+│   │   ├── theme.css         # Enterprise Design System
 │   │   ├── theme-toggle.js   # Light/Dark Mode Manager
 │   │   └── chart.umd.min.js  # Chart.js library
 │   └── server.js             # Express & WebSocket Telemetry Server
@@ -86,14 +86,13 @@ BrowserPerformance/
 │   ├── workload_benchmark.js # Light vs Heavy Workload Benchmark
 │   ├── runner.js             # Benchmark Orchestrator & Results Archiver
 │   └── analyze.js            # Terminal Statistical Analysis CLI
-├── results_*/                # Archived Standard Benchmark Runs
-├── workloads_*/              # Archived Light vs Heavy Workload Runs
+├── results_*/                # Archived Benchmark Runs
 └── package.json
 ```
 
 ---
 
-## 📖 Evaluation Methodology (Raj K. Jain)
+## Evaluation Methodology (Raj K. Jain)
 
 | Analysis Dimension | Mathematical Model | Source in Jain |
 | :--- | :--- | :--- |
@@ -106,5 +105,5 @@ BrowserPerformance/
 
 ---
 
-## 📄 License
+## License
 ISC License. Built for rigorous computer systems performance engineering.

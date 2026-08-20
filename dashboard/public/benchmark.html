@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Browser Performance — Evaluation Suite</title>
+<title>Spectra — Systems Evaluation Suite</title>
 <script>
   document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
 </script>
@@ -17,9 +17,15 @@
   <!-- Left Sidebar Navigation Column -->
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-icon">⚡</div>
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <div>
-        <div class="brand-title">BrowserPerf</div>
+        <div class="brand-title">Spectra</div>
         <div class="brand-sub">Evaluation Suite</div>
       </div>
     </div>
@@ -27,23 +33,18 @@
     <div class="nav-group-title">Navigation Views</div>
     <nav class="nav-links">
       <button class="nav-item active" onclick="switchPageView('overview', this)">
-        <span>📊</span>
         <span>Overview Scorecard</span>
       </button>
       <button class="nav-item" onclick="switchPageView('charts', this)">
-        <span>📈</span>
         <span>Visual Charts</span>
       </button>
       <button class="nav-item" onclick="switchPageView('table', this)">
-        <span>📋</span>
         <span>Comparison & Ratios</span>
       </button>
       <button class="nav-item" onclick="switchPageView('logs', this)">
-        <span>📑</span>
         <span>Raw Observation Logs</span>
       </button>
       <a href="/" class="nav-item">
-        <span>⚡</span>
         <span>Live Telemetry</span>
       </a>
     </nav>
@@ -88,7 +89,7 @@
       <!-- Winner Hero Card -->
       <div class="hero-winner-card">
         <div>
-          <div class="winner-badge">Overall Winner</div>
+          <div class="winner-badge">Overall Top Performer</div>
           <div class="winner-heading" id="winnerHeadline">Analyzing Benchmark Results...</div>
           <div class="winner-text" id="winnerText">
             Evaluating performance distributions across startup speed, memory usage, CPU load, and web responsiveness.
@@ -170,8 +171,8 @@
             <div style="font-size:13px; color:var(--muted);" id="chartSubtitle">Interactive comparison across 10 measured websites (Lower is better)</div>
           </div>
           <div class="btn-group">
-            <button class="tab-btn active" onclick="setChartMode('pageload', this)">🌐 Page Load by Website</button>
-            <button class="tab-btn" onclick="setChartMode('combined', this)">⚡ Combined System Resources (CPU / RAM / Startup)</button>
+            <button class="tab-btn active" onclick="setChartMode('pageload', this)">Page Load by Website</button>
+            <button class="tab-btn" onclick="setChartMode('combined', this)">Combined System Resources (CPU / RAM / Startup)</button>
           </div>
         </div>
 
@@ -183,17 +184,17 @@
         <!-- 2. Combined 3-Column Resource Charts -->
         <div id="chartContainerCombined" style="display:none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
           <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">🚀 Startup Speed (ms)</div>
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">Startup Speed (ms)</div>
             <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Cold process initialization latency</div>
             <div style="height:280px; position:relative;"><canvas id="chartStartupCombined"></canvas></div>
           </div>
           <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">⚡ CPU Utilization (%)</div>
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">CPU Utilization (%)</div>
             <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Processor load during browsing</div>
             <div style="height:280px; position:relative;"><canvas id="chartCpuCombined"></canvas></div>
           </div>
           <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
-            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">💾 Memory Footprint (MB)</div>
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">Memory Footprint (MB)</div>
             <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">Physical RAM working set</div>
             <div style="height:280px; position:relative;"><canvas id="chartMemCombined"></canvas></div>
           </div>
@@ -333,19 +334,6 @@
     Firefox: { bg: 'rgba(249, 115, 22, 0.85)', border: '#f97316' },
   };
 
-  const CANONICAL_SITES = [
-    "https://www.google.com",
-    "https://github.com",
-    "https://stackoverflow.com",
-    "https://www.wikipedia.org",
-    "https://www.youtube.com",
-    "https://www.reddit.com",
-    "https://www.microsoft.com",
-    "https://developer.mozilla.org",
-    "https://playwright.dev",
-    "https://openai.com",
-  ];
-
   let benchmarkData = null;
   let chartInstance = null;
   let chartMode = 'pageload';
@@ -435,7 +423,6 @@
       renderWorkloadSection();
       renderLogs(currentCsv);
 
-      // Toggle workload log tab if available
       const workloadTabBtn = document.getElementById("workloadLogTabBtn");
       if (workloadTabBtn) {
         workloadTabBtn.style.display = (data.workloads && data.workloads.raw?.length) ? '' : 'none';
@@ -487,9 +474,9 @@
       `;
 
       document.getElementById("winnerChips").innerHTML = `
-        <span class="pill-tag pill-green">⚡ Best Scaling: ${bestScaling.Browser} (${bestScaling.LoadInflationRatio})</span>
-        <span class="pill-tag pill-blue">💾 Lowest RAM: ${bestMem}</span>
-        <span class="pill-tag pill-purple">🚀 Fastest Startup: ${bestStartup}</span>
+        <span class="pill-tag pill-green">Best Scaling: ${bestScaling.Browser} (${bestScaling.LoadInflationRatio})</span>
+        <span class="pill-tag pill-blue">Lowest RAM: ${bestMem}</span>
+        <span class="pill-tag pill-purple">Fastest Startup: ${bestStartup}</span>
       `;
     } else {
       document.getElementById("winnerHeadline").innerText = `${overallWinner} is the Top Performer Overall`;
@@ -499,9 +486,9 @@
       `;
 
       document.getElementById("winnerChips").innerHTML = `
-        <span class="pill-tag pill-green">🚀 Fastest Startup: ${bestStartup}</span>
-        <span class="pill-tag pill-blue">⚡ Lowest CPU: ${bestCpu}</span>
-        <span class="pill-tag pill-purple">💾 Lowest RAM: ${bestMem}</span>
+        <span class="pill-tag pill-green">Fastest Startup: ${bestStartup}</span>
+        <span class="pill-tag pill-blue">Lowest CPU: ${bestCpu}</span>
+        <span class="pill-tag pill-purple">Lowest RAM: ${bestMem}</span>
       `;
     }
 
@@ -520,7 +507,7 @@
       return sorted.map((b, idx) => {
         const s = summary[b][key];
         if (!s || s.n === 0) return '';
-        const rank = idx === 0 ? '👑 ' : `#${idx+1} `;
+        const rank = idx === 0 ? '#1 ' : `#${idx+1} `;
         return `
           <div class="compare-row">
             <span class="compare-name">${rank}${b}</span>
@@ -555,7 +542,7 @@
     const bestSpeed = [...browsers].sort((a,b) => summary[b].speedometer.geoMean - summary[a].speedometer.geoMean)[0];
     const sp = summary[bestSpeed].speedometer;
     if (sp && sp.n > 0) {
-      document.getElementById("speedWinnerBadge").innerText = `Highest: ${bestSpeed}`;
+      document.getElementById("speedWinnerBadge").innerText = `Top: ${bestSpeed}`;
       document.getElementById("speedMainVal").innerText = sp.geoMean.toFixed(1);
       document.getElementById("speedCompareList").innerHTML = buildMiniCompare('speedometer', 'pts', true);
     } else {
@@ -586,8 +573,8 @@
       const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
       const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
       const rankBadge = idx === 0
-        ? `<span class="pill-tag pill-green">#1 Overall</span>`
-        : `<span class="pill-tag pill-gray">#${idx+1}</span>`;
+        ? `<span class="pill-tag pill-green">Rank #1</span>`
+        : `<span class="pill-tag pill-gray">Rank #${idx+1}</span>`;
 
       return `
         <tr>
@@ -635,8 +622,8 @@
 
       const fmtRatio = (r) => {
         if (isBase) return `<span class="mono" style="color:var(--muted);">1.00x</span>`;
-        if (r >= 1.05) return `<span class="pill-tag pill-green">${r.toFixed(2)}x (▲ +${((r-1)*100).toFixed(0)}%)</span>`;
-        if (r <= 0.95) return `<span class="pill-tag pill-amber">${r.toFixed(2)}x (▼ -${((1-r)*100).toFixed(0)}%)</span>`;
+        if (r >= 1.05) return `<span class="pill-tag pill-green">${r.toFixed(2)}x (+${((r-1)*100).toFixed(0)}%)</span>`;
+        if (r <= 0.95) return `<span class="pill-tag pill-amber">${r.toFixed(2)}x (-${((1-r)*100).toFixed(0)}%)</span>`;
         return `<span class="mono" style="color:var(--muted);">${r.toFixed(2)}x (Par)</span>`;
       };
 
@@ -644,11 +631,11 @@
       if (isBase) {
         verdict = `<span class="pill-tag pill-gray">Baseline Reference</span>`;
       } else if (geoMeanRatio >= 1.05) {
-        verdict = `<span class="pill-tag pill-green">👑 ${((geoMeanRatio - 1) * 100).toFixed(0)}% Superior Overall</span>`;
+        verdict = `<span class="pill-tag pill-green">Superior (+${((geoMeanRatio - 1) * 100).toFixed(0)}%)</span>`;
       } else if (geoMeanRatio <= 0.95) {
-        verdict = `<span class="pill-tag pill-amber">⚠️ ${((1 - geoMeanRatio) * 100).toFixed(0)}% Inferior Overall</span>`;
+        verdict = `<span class="pill-tag pill-amber">Inferior (-${((1 - geoMeanRatio) * 100).toFixed(0)}%)</span>`;
       } else {
-        verdict = `<span class="pill-tag pill-blue">≈ Equivalent (±5%)</span>`;
+        verdict = `<span class="pill-tag pill-blue">Equivalent (±5%)</span>`;
       }
 
       return `

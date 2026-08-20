@@ -17,9 +17,15 @@
   <!-- Left Sidebar -->
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-icon">⚡</div>
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <div>
-        <div class="brand-title">BrowserPerf</div>
+        <div class="brand-title">Spectra</div>
         <div class="brand-sub">Live Telemetry</div>
       </div>
     </div>
@@ -27,11 +33,9 @@
     <div class="nav-group-title">Navigation</div>
     <nav class="nav-links">
       <a href="/" class="nav-item active">
-        <span>⚡</span>
         <span>Live Telemetry</span>
       </a>
       <a href="/benchmark.html" class="nav-item">
-        <span>📊</span>
         <span>Benchmark Scorecard</span>
       </a>
     </nav>
@@ -109,7 +113,7 @@
     <div class="card-grid" id="grid"></div>
 
     <p style="font-size:11.5px; color:var(--muted); font-family:var(--font-mono); margin-top:12px;">
-      ℹ️ CPU and RAM are sampled via OS process telemetry at 1-second intervals. Bandwidth is captured via response headers.
+      Note: CPU and RAM are sampled via OS process telemetry at 1-second intervals. Bandwidth is captured via response headers.
     </p>
 
   </main>
