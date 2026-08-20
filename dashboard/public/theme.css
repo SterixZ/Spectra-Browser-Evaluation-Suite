@@ -568,9 +568,9 @@ tr:hover td {
 
 /* Live Telemetry Styles */
 .card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .browser-head {
@@ -738,41 +738,4 @@ tr:hover td {
   background: var(--red-wash);
   color: var(--red);
   border-color: rgba(239, 68, 68, 0.25);
-}
-
-/* Vertical Measurement Gauges & Stack View */
-.vertical-level-meter {
-  width: 8px;
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-}
-
-.vertical-level-fill {
-  width: 100%;
-  border-radius: 3px;
-  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card-grid.vertical-stack {
-  grid-template-columns: 1fr !important;
-}
-
-.card-grid.vertical-stack .card {
-  display: grid;
-  grid-template-columns: 260px 1fr 1fr 1fr;
-  gap: 20px;
-  align-items: center;
-  padding: 18px 22px;
-}
-
-@media (max-width: 1150px) {
-  .card-grid.vertical-stack .card {
-    grid-template-columns: 1fr;
-  }
 }

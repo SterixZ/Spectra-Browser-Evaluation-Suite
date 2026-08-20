@@ -81,11 +81,7 @@
         <h1 class="header-title">Live Dashboard</h1>
         <div class="header-desc">Continuous real-time CPU, RAM, and network throughput telemetry while browsing</div>
       </div>
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div class="btn-group">
-          <button class="tab-btn active" id="btnGrid" onclick="setLayoutMode('grid', this)">Card Grid</button>
-          <button class="tab-btn" id="btnVertical" onclick="setLayoutMode('vertical', this)">Vertical Measurement Stream</button>
-        </div>
+      <div>
         <span class="status-banner" id="status">Connecting to server…</span>
       </div>
     </div>
@@ -136,7 +132,6 @@ function chartColorsForTheme(mode) {
 let chartColors = chartColorsForTheme(document.documentElement.getAttribute("data-theme") || "light");
 
 const state = {};
-const latestCpu = {};
 const statusEl = document.getElementById("status");
 const eventLogEl = document.getElementById("eventLog");
 const activeCountEl = document.getElementById("activeCount");
@@ -164,27 +159,6 @@ function createInitialLabels() {
   return Array(BUFFER_SIZE).fill("");
 }
 
-function fmtRuntime(seconds) {
-  if (seconds == null || isNaN(seconds)) return "–";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}m ${s.toString().padStart(2, "0")}s`;
-}
-
-function setLayoutMode(mode, btn) {
-  const grid = document.getElementById("grid");
-  if (btn) {
-    Array.from(btn.parentElement.children).forEach(c => c.className = "tab-btn");
-    btn.className = "tab-btn active";
-  }
-  if (mode === "vertical") {
-    grid.classList.add("vertical-stack");
-  } else {
-    grid.classList.remove("vertical-stack");
-  }
-  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
-}
-
 let wsConnected = false;
 const ws = new WebSocket(`ws://${location.host}`);
 
@@ -193,7 +167,7 @@ ws.onopen = () => {
   statusEl.textContent = "● Connected (1s stream)";
   statusEl.className = "status-banner connected";
   BROWSERS.forEach((name) => {
-    if (state[name] && !state[name].running) document.getElementById(`launch-${name}`).disabled = false;
+    if (!state[name].running) document.getElementById(`launch-${name}`).disabled = false;
   });
 };
 
@@ -232,86 +206,83 @@ function makeCard(name) {
   const color = BROWSER_COLOR[name];
   const el = document.createElement("div");
   el.className = "card";
+  el.style.marginBottom = "20px";
   el.innerHTML = `
-    <div>
-      <div class="browser-head">
-        <div class="browser-icon" style="background:${color}">${name[0]}</div>
+    <!-- Top Header Row -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:14px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="browser-icon" style="background:${color}; width:36px; height:36px; border-radius:10px; font-weight:800; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px;">${name[0]}</div>
         <div>
-          <div class="browser-name">${name}</div>
-          <div><span class="status-dot" id="dot-${name}"></span><span class="status-label" id="statuslabel-${name}">idle</span></div>
-        </div>
-        <div class="sidebar-spacer"></div>
-        <button class="pill-btn primary" id="launch-${name}" onclick="launch('${name}')" disabled>Launch</button>
-        <button class="pill-btn danger" id="stop-${name}" onclick="stop('${name}')" disabled>Stop</button>
-      </div>
-
-      <div class="stat-row">
-        <div class="stat">
-          <div style="font-size:12px; color:${color}">◉</div>
-          <div><div class="stat-value" id="cpu-${name}">–</div><div class="stat-label">CPU</div></div>
-        </div>
-        <div class="stat">
-          <div style="font-size:12px; color:var(--green)">▣</div>
-          <div><div class="stat-value" id="mem-${name}">–</div><div class="stat-label">RAM</div></div>
-        </div>
-        <div class="stat">
-          <div style="font-size:12px; color:var(--amber)">◷</div>
-          <div><div class="stat-value" id="runtime-${name}">–</div><div class="stat-label">Runtime</div></div>
-        </div>
-        <div class="stat">
-          <div style="font-size:12px; color:var(--blue)">↕</div>
-          <div><div class="stat-value" id="bw-${name}">–</div><div class="stat-label">Network</div></div>
+          <div style="font-size:16px; font-weight:800; color:var(--text);">${name}</div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="status-dot" id="dot-${name}"></span>
+            <span class="status-label" id="statuslabel-${name}" style="font-size:12px;">idle</span>
+          </div>
         </div>
       </div>
 
-      <div class="pulse-bar" id="pulse-${name}"></div>
-      <div class="url-line" id="url-${name}">not running</div>
+      <!-- Stat Values Row -->
+      <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+        <div style="text-align:right;">
+          <div class="stat-value" id="cpu-${name}" style="font-size:16px; font-weight:700; font-family:var(--font-mono); color:var(--text);">–</div>
+          <div class="stat-label" style="font-size:11px; color:var(--muted); text-transform:uppercase;">CPU Load</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="stat-value" id="mem-${name}" style="font-size:16px; font-weight:700; font-family:var(--font-mono); color:var(--text);">–</div>
+          <div class="stat-label" style="font-size:11px; color:var(--muted); text-transform:uppercase;">RAM Footprint</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="stat-value" id="runtime-${name}" style="font-size:16px; font-weight:700; font-family:var(--font-mono); color:var(--text);">–</div>
+          <div class="stat-label" style="font-size:11px; color:var(--muted); text-transform:uppercase;">Runtime</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="stat-value" id="bw-${name}" style="font-size:16px; font-weight:700; font-family:var(--font-mono); color:var(--text);">–</div>
+          <div class="stat-label" style="font-size:11px; color:var(--muted); text-transform:uppercase;">Network</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div style="display:flex; gap:8px;">
+        <button class="pill-btn primary" id="launch-${name}" onclick="launch('${name}')" disabled style="padding:6px 16px; font-weight:700;">Launch</button>
+        <button class="pill-btn danger" id="stop-${name}" onclick="stop('${name}')" disabled style="padding:6px 16px; font-weight:700;">Stop</button>
+      </div>
     </div>
 
-    <!-- 1. Dedicated CPU Sparkline with vertical measurement level meter -->
-    <div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <div class="chart-label" style="margin:0;">CPU Load (%)</div>
-        <div style="font-size:11.5px; font-family:var(--font-mono); font-weight:700; color:${color};" id="cpu-badge-${name}">0.0%</div>
-      </div>
-      <div style="display:flex; gap:8px; align-items:stretch; margin-top:4px; margin-bottom:8px;">
-        <div style="flex:1; height:80px; position:relative;">
+    <!-- Active URL Bar & Pulse -->
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+      <div class="url-line" id="url-${name}" style="flex:1; margin:0; font-family:var(--font-mono); font-size:12px; padding:6px 12px; background:var(--panel-alt); border-radius:6px; border:1px solid var(--border);">not running</div>
+      <div class="pulse-bar" id="pulse-${name}" style="width:120px;"></div>
+    </div>
+
+    <!-- 3 Horizontal Sub-Charts (Wide Base!) -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+      <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:12px; font-weight:700; color:var(--text);">CPU Load (%)</span>
+          <span style="font-size:10.5px; color:var(--muted); font-family:var(--font-mono);">0–10% Scale</span>
+        </div>
+        <div style="height:90px; position:relative;">
           <canvas id="cpu-chart-${name}"></canvas>
         </div>
-        <div class="vertical-level-meter" title="Instantaneous CPU Level">
-          <div class="vertical-level-fill" id="cpu-meter-${name}" style="background:${color}; height:0%;"></div>
-        </div>
       </div>
-    </div>
 
-    <!-- 2. Dedicated Memory Sparkline with vertical measurement level meter -->
-    <div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <div class="chart-label" style="margin:0;">Memory Footprint (MB)</div>
-        <div style="font-size:11.5px; font-family:var(--font-mono); font-weight:700; color:var(--green);" id="mem-badge-${name}">0 MB</div>
-      </div>
-      <div style="display:flex; gap:8px; align-items:stretch; margin-top:4px; margin-bottom:8px;">
-        <div style="flex:1; height:80px; position:relative;">
+      <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:12px; font-weight:700; color:var(--text);">Memory Footprint (MB)</span>
+          <span style="font-size:10.5px; color:var(--muted); font-family:var(--font-mono);">Physical RAM</span>
+        </div>
+        <div style="height:90px; position:relative;">
           <canvas id="mem-chart-${name}"></canvas>
         </div>
-        <div class="vertical-level-meter" title="Instantaneous RAM Working Set">
-          <div class="vertical-level-fill" id="mem-meter-${name}" style="background:var(--green); height:0%;"></div>
-        </div>
       </div>
-    </div>
 
-    <!-- 3. Dedicated Network Sparkline with vertical measurement level meter -->
-    <div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <div class="chart-label" style="margin:0;">Network Rate (KB/s)</div>
-        <div style="font-size:11.5px; font-family:var(--font-mono); font-weight:700; color:var(--amber);" id="bw-badge-${name}">0 KB/s</div>
-      </div>
-      <div style="display:flex; gap:8px; align-items:stretch; margin-top:4px;">
-        <div style="flex:1; height:80px; position:relative;">
-          <canvas id="netchart-${name}"></canvas>
+      <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:12px; font-weight:700; color:var(--text);">Network Rate (KB/s)</span>
+          <span style="font-size:10.5px; color:var(--muted); font-family:var(--font-mono);">Throughput</span>
         </div>
-        <div class="vertical-level-meter" title="Instantaneous Network Bandwidth">
-          <div class="vertical-level-fill" id="bw-meter-${name}" style="background:var(--amber); height:0%;"></div>
+        <div style="height:90px; position:relative;">
+          <canvas id="netchart-${name}"></canvas>
         </div>
       </div>
     </div>
@@ -333,11 +304,7 @@ function makeCard(name) {
         x: { display: false },
         y: {
           beginAtZero: true,
-          ticks: {
-            color: chartColors.faint,
-            font: { size: 9, family: 'JetBrains Mono' },
-            maxTicksLimit: 4,
-          },
+          ticks: { color: chartColors.faint, font: { size: 9, family: 'JetBrains Mono' } },
           grid: { color: chartColors.grid, drawBorder: false }
         }
       }
@@ -366,7 +333,6 @@ function makeCard(name) {
             suggestedMax: 10,
             ticks: {
               stepSize: 5,
-              callback: (v) => v + '%',
               color: chartColors.faint,
               font: { size: 9, family: 'JetBrains Mono' }
             },
@@ -390,23 +356,7 @@ function makeCard(name) {
           backgroundColor: "rgba(16, 185, 129, 0.10)",
         }]
       },
-      options: {
-        ...commonChartOpts,
-        scales: {
-          ...commonChartOpts.scales,
-          y: {
-            beginAtZero: true,
-            suggestedMax: 1500,
-            ticks: {
-              maxTicksLimit: 4,
-              callback: (v) => v >= 1000 ? (v/1000).toFixed(1) + 'G' : v + 'M',
-              color: chartColors.faint,
-              font: { size: 9, family: 'JetBrains Mono' }
-            },
-            grid: { color: chartColors.grid, drawBorder: false }
-          }
-        }
-      }
+      options: commonChartOpts
     });
 
     const netCtx = document.getElementById(`netchart-${name}`).getContext("2d");
@@ -423,23 +373,7 @@ function makeCard(name) {
           backgroundColor: "rgba(245, 158, 11, 0.10)",
         }]
       },
-      options: {
-        ...commonChartOpts,
-        scales: {
-          ...commonChartOpts.scales,
-          y: {
-            beginAtZero: true,
-            suggestedMax: 100,
-            ticks: {
-              maxTicksLimit: 4,
-              callback: (v) => v + 'k',
-              color: chartColors.faint,
-              font: { size: 9, family: 'JetBrains Mono' }
-            },
-            grid: { color: chartColors.grid, drawBorder: false }
-          }
-        }
-      }
+      options: commonChartOpts
     });
   } catch (err) {
     console.warn(`Charts initialization failed for ${name}:`, err);
@@ -483,7 +417,15 @@ try {
     }
   });
 } catch (err) {
-  console.warn("Session chart initialization failed:", err);
+  console.warn("Session sparkline unavailable:", err);
+}
+
+const latestCpu = {};
+
+function fmtRuntime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}m ${s}s`;
 }
 
 function setRunning(name, running) {
@@ -524,13 +466,6 @@ ws.onmessage = (event) => {
     });
     document.getElementById(`url-${msg.browser}`).textContent = "not running";
     renderPulseBar(`pulse-${msg.browser}`, 0);
-
-    const cpuMeter = document.getElementById(`cpu-meter-${msg.browser}`);
-    if (cpuMeter) cpuMeter.style.height = "0%";
-    const memMeter = document.getElementById(`mem-meter-${msg.browser}`);
-    if (memMeter) memMeter.style.height = "0%";
-    const bwMeter = document.getElementById(`bw-meter-${msg.browser}`);
-    if (bwMeter) bwMeter.style.height = "0%";
   }
 
   if (msg.type === "error") {
@@ -553,23 +488,6 @@ ws.onmessage = (event) => {
     }
 
     renderPulseBar(`pulse-${browser}`, Number(cpuPercent));
-
-    // Update vertical level meters and live badges
-    const cpuMeter = document.getElementById(`cpu-meter-${browser}`);
-    if (cpuMeter) cpuMeter.style.height = `${Math.min(100, (Number(cpuPercent) / 10) * 100)}%`;
-
-    const memMeter = document.getElementById(`mem-meter-${browser}`);
-    if (memMeter) memMeter.style.height = `${Math.min(100, (Number(memoryMB) / 2000) * 100)}%`;
-
-    const bwMeter = document.getElementById(`bw-meter-${browser}`);
-    if (bwMeter) bwMeter.style.height = `${Math.min(100, (Number(bandwidthRateKBs) / 200) * 100)}%`;
-
-    const cpuBadge = document.getElementById(`cpu-badge-${browser}`);
-    if (cpuBadge) cpuBadge.textContent = `${cpuPercent}%`;
-    const memBadge = document.getElementById(`mem-badge-${browser}`);
-    if (memBadge) memBadge.textContent = `${Number(memoryMB).toFixed(0)} MB`;
-    const bwBadge = document.getElementById(`bw-badge-${browser}`);
-    if (bwBadge) bwBadge.textContent = `${bandwidthRateKBs} KB/s`;
 
     const s = state[browser];
     if (s.cpuChart) pushRollingValue(s.cpuChart, Number(cpuPercent));
