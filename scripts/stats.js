@@ -238,10 +238,26 @@ function computeOneWayAnova(groups) {
   };
 }
 
+// Pairwise comparisons between all pairs in groups
+function computePairwise(groups, unit = "") {
+  const names = Object.keys(groups);
+  const results = [];
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const a = names[i];
+      const b = names[j];
+      const comp = compareTwoAlternatives(groups[a] || [], groups[b] || [], a, b);
+      results.push({ ...comp, unit });
+    }
+  }
+  return results;
+}
+
 module.exports = {
   getTCritical,
   computeDescriptiveStats,
   computeStats: computeDescriptiveStats,
   compareTwoAlternatives,
+  computePairwise,
   computeOneWayAnova,
 };

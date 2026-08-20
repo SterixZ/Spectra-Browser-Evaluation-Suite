@@ -583,6 +583,10 @@
 
     tbody.innerHTML = ranked.map((b, idx) => {
       const s = summary[b];
+      const startupStr = s.startup?.n > 0 && s.startup.mean > 0 ? `${s.startup.mean.toFixed(0)} ms` : '—';
+      const cpuStr = s.cpu?.n > 0 ? `${s.cpu.mean.toFixed(1)}%` : '—';
+      const memStr = s.memory?.n > 0 && s.memory.mean > 0 ? `${s.memory.mean.toFixed(0)} MB` : '—';
+      const loadStr = s.pageload?.n > 0 && s.pageload.mean > 0 ? `${s.pageload.mean.toFixed(0)} ms` : '—';
       const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
       const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
       const rankBadge = idx === 0
@@ -592,10 +596,10 @@
       return `
         <tr>
           <td><strong>${b}</strong></td>
-          <td class="mono">${s.startup.mean.toFixed(0)} ms</td>
-          <td class="mono">${s.cpu.mean.toFixed(1)}%</td>
-          <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
-          <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
+          <td class="mono">${startupStr}</td>
+          <td class="mono">${cpuStr}</td>
+          <td class="mono">${memStr}</td>
+          <td class="mono">${loadStr}</td>
           <td class="mono">${p90Str}</td>
           <td class="mono">${speedStr}</td>
           <td>${rankBadge}</td>
