@@ -172,7 +172,8 @@
           </div>
           <div class="btn-group">
             <button class="tab-btn active" onclick="setChartMode('pageload', this)">Page Load by Website</button>
-            <button class="tab-btn" onclick="setChartMode('combined', this)">Combined System Resources (CPU / RAM / Startup)</button>
+            <button class="tab-btn" onclick="setChartMode('kiviat', this)">Kiviat Radar Graph</button>
+            <button class="tab-btn" onclick="setChartMode('combined', this)">Combined System Resources</button>
           </div>
         </div>
 
@@ -181,7 +182,20 @@
           <canvas id="benchmarkChart"></canvas>
         </div>
 
-        <!-- 2. Combined 3-Column Resource Charts -->
+        <!-- 2. Kiviat Multi-Dimensional Radar Graph (Raj Jain Ch. 10.4) -->
+        <div id="chartContainerKiviat" style="display:none; flex-direction:column; gap:16px;">
+          <div style="height:460px; position:relative;">
+            <canvas id="chartKiviat"></canvas>
+          </div>
+          <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 16px; font-size:12px; line-height:1.6; color:var(--muted);">
+            <strong style="color:var(--text);">Methodology Note (Raj K. Jain, Ch. 10.4):</strong>
+            A <strong>Kiviat Graph</strong> plots multi-dimensional metrics on normalized radial spokes (0–100% efficiency).
+            Each axis is oriented such that higher reach represents superior architectural performance.
+            The browser enclosing the largest, most balanced star-polygon provides the highest overall system efficiency.
+          </div>
+        </div>
+
+        <!-- 3. Combined 3-Column Resource Charts -->
         <div id="chartContainerCombined" style="display:none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
           <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;">
             <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text);">Startup Speed (ms)</div>
@@ -337,6 +351,7 @@
 
   let benchmarkData = null;
   let chartInstance = null;
+  let chartKiviatInstance = null;
   let chartMode = 'pageload';
   let chartStartupInstance = null;
   let chartCpuInstance = null;
@@ -756,15 +771,28 @@
     Array.from(btn.parentElement.children).forEach(c => c.className = 'tab-btn');
     btn.className = 'tab-btn active';
 
+    const pLoad = document.getElementById('chartContainerPageload');
+    const pKiviat = document.getElementById('chartContainerKiviat');
+    const pComb = document.getElementById('chartContainerCombined');
+
     if (mode === 'pageload') {
-      document.getElementById('chartContainerPageload').style.display = 'block';
-      document.getElementById('chartContainerCombined').style.display = 'none';
+      pLoad.style.display = 'block';
+      pKiviat.style.display = 'none';
+      pComb.style.display = 'none';
       document.getElementById('chartTitle').innerText = 'Page Load Speed across Websites (ms)';
       document.getElementById('chartSubtitle').innerText = 'Interactive comparison across 10 measured websites (Lower is better)';
       renderChart();
+    } else if (mode === 'kiviat') {
+      pLoad.style.display = 'none';
+      pKiviat.style.display = 'flex';
+      pComb.style.display = 'none';
+      document.getElementById('chartTitle').innerText = 'Kiviat Multi-Dimensional Performance Radar (Raj Jain Ch. 10.4)';
+      document.getElementById('chartSubtitle').innerText = 'Normalized radial balance across 6 core vectors (0–100% efficiency score, larger polygon = superior balance)';
+      renderKiviatChart();
     } else {
-      document.getElementById('chartContainerPageload').style.display = 'none';
-      document.getElementById('chartContainerCombined').style.display = 'grid';
+      pLoad.style.display = 'none';
+      pKiviat.style.display = 'none';
+      pComb.style.display = 'grid';
       document.getElementById('chartTitle').innerText = 'Combined System Resources (Startup / CPU / RAM)';
       document.getElementById('chartSubtitle').innerText = 'Multi-metric resource utilization and initialization latency comparison';
       renderCombinedResourceCharts();
@@ -772,6 +800,10 @@
   }
 
   function renderChart() {
+    if (chartMode === 'kiviat') {
+      renderKiviatChart();
+      return;
+    }
     if (chartMode === 'combined') {
       renderCombinedResourceCharts();
       return;
@@ -840,6 +872,121 @@
           }
         }
       }
+    });
+  }
+
+  function renderKiviatChart() {
+    if (!benchmarkData || typeof Chart === 'undefined') return;
+    const ctx = document.getElementById("chartKiviat")?.getContext("2d");
+    if (!ctx) return;
+    if (chartKiviatInstance) chartKiviatInstance.destroy();
+
+    const { summary, workloads } = benchmarkData;
+    const browsers = Object.keys(summary);
+    if (!browsers.length) return;
+    const theme = getThemeColors();
+
+    const minStartup = Math.min(...browsers.map(b => summary[b].startup.mean).filter(v => v > 0)) || 1;
+    const minCpu = Math.min(...browsers.map(b => summary[b].cpu.mean).filter(v => v > 0)) || 1;
+    const minMem = Math.min(...browsers.map(b => summary[b].memory.mean).filter(v => v > 0)) || 1;
+    const minLoad = Math.min(...browsers.map(b => summary[b].pageload.mean).filter(v => v > 0)) || 1;
+    const maxSpeed = Math.max(...browsers.map(b => summary[b].speedometer?.geoMean || summary[b].speedometer?.mean || 0)) || 1;
+
+    let workloadMap = {};
+    if (workloads && workloads.comparison) {
+      workloads.comparison.forEach(w => {
+        workloadMap[w.Browser] = parseFloat(w.LoadInflationRatio) || 1;
+      });
+    }
+    const minInflation = Object.keys(workloadMap).length ? Math.min(...Object.values(workloadMap)) : 1;
+
+    const labels = [
+      'Startup Speed',
+      'CPU Efficiency',
+      'Memory Efficiency',
+      'Page Load Speed',
+      'Web Responsiveness',
+      'Workload Resilience',
+    ];
+
+    const datasets = browsers.map(b => {
+      const s = summary[b];
+      const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.25)', border: '#888' };
+
+      const scoreStartup = s.startup.mean > 0 ? Math.min(100, (minStartup / s.startup.mean) * 100) : 50;
+      const scoreCpu = s.cpu.mean > 0 ? Math.min(100, (minCpu / s.cpu.mean) * 100) : 50;
+      const scoreMem = s.memory.mean > 0 ? Math.min(100, (minMem / s.memory.mean) * 100) : 50;
+      const scoreLoad = s.pageload.mean > 0 ? Math.min(100, (minLoad / s.pageload.mean) * 100) : 50;
+      
+      const sp = s.speedometer?.geoMean || s.speedometer?.mean || 0;
+      const scoreSpeed = sp > 0 ? Math.min(100, (sp / maxSpeed) * 100) : 80;
+
+      const infl = workloadMap[b];
+      const scoreResilience = infl ? Math.min(100, (minInflation / infl) * 100) : 85;
+
+      return {
+        label: b,
+        data: [
+          Number(scoreStartup.toFixed(1)),
+          Number(scoreCpu.toFixed(1)),
+          Number(scoreMem.toFixed(1)),
+          Number(scoreLoad.toFixed(1)),
+          Number(scoreSpeed.toFixed(1)),
+          Number(scoreResilience.toFixed(1)),
+        ],
+        backgroundColor: bColor.bg.replace(/[\d\.]+\)$/, '0.25)'),
+        borderColor: bColor.border,
+        borderWidth: 2.5,
+        pointBackgroundColor: bColor.border,
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: bColor.border,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      };
+    });
+
+    chartKiviatInstance = new Chart(ctx, {
+      type: 'radar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        elements: {
+          line: { tension: 0.15 },
+        },
+        scales: {
+          r: {
+            angleLines: { color: theme.grid, lineWidth: 1.2 },
+            grid: { color: theme.grid, lineWidth: 1.2 },
+            pointLabels: {
+              color: theme.text,
+              font: { family: 'Inter', weight: 700, size: 12.5 },
+              padding: 12,
+            },
+            ticks: {
+              color: theme.text,
+              backdropColor: 'transparent',
+              font: { family: 'JetBrains Mono', size: 10 },
+              stepSize: 20,
+              display: true,
+            },
+            suggestedMin: 20,
+            suggestedMax: 100,
+          },
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 }, padding: 16 },
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw}% efficiency score`,
+            },
+          },
+        },
+      },
     });
   }
 
