@@ -164,22 +164,22 @@ async function runWorkloadBenchmark() {
   console.log(`========================================================================\n`);
 
   const rawRows = [
-    "Browser,Category,SiteName,Url,Iteration,StartupMs,LoadTimeMs,TTFB_Ms,DomInteractiveMs,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB,Requests,TransferMB,TransferRateKBs",
+    "Browser,Category,SiteName,Url,Iteration,StartupMs,LoadTimeMs,DNS_Ms,TCP_Ms,TLS_Ms,TTFB_Ms,Download_Ms,FCP_Ms,DomInteractiveMs,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB,Requests,TransferMB,TransferRateKBs",
   ];
 
   const metricsRows = ["browser,run,startup_time_ms,cpu_percent,memory_mb"];
   const pageloadRows = ["browser,run,url,load_time_ms"];
   const speedometerRows = ["browser,run,score"];
-  const networkRows = ["Browser,Run,Category,SiteName,Url,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s)"];
+  const networkRows = ["Browser,Run,Category,SiteName,Url,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms)"];
 
   const launchers = getLaunchers();
   const aggregated = {};
 
   for (const browserInfo of launchers) {
     aggregated[browserInfo.name] = {
-      startupTimes: [],
       Lightweight: { loadTimes: [], peakCpus: [], peakMems: [] },
       Heavyweight: { loadTimes: [], peakCpus: [], peakMems: [] },
+      startupTimes: [],
     };
 
     console.log(`\n▶ Starting Evaluation: ${browserInfo.name.toUpperCase()}`);
@@ -250,6 +250,8 @@ async function runWorkloadBenchmark() {
               .evaluate(() => {
                 const nav = performance.getEntriesByType("navigation")[0];
                 const resList = performance.getEntriesByType("resource");
+                const paintList = performance.getEntriesByType("paint");
+
                 let clientBytes = nav ? (nav.transferSize || nav.encodedBodySize || 0) : 0;
                 let clientCount = 1;
                 for (const r of resList) {
@@ -257,7 +259,17 @@ async function runWorkloadBenchmark() {
                   clientBytes += (r.transferSize || r.encodedBodySize || r.decodedBodySize || 0);
                 }
 
-                if (!nav) return { loadTime: null, ttfb: null, domInteractive: null, domComplete: null, clientBytes, clientCount };
+                const dns = nav ? Math.max(0, nav.domainLookupEnd - nav.domainLookupStart) : 0;
+                const tcp = nav ? Math.max(0, nav.connectEnd - nav.connectStart) : 0;
+                const tls = nav && nav.secureConnectionStart > 0 ? Math.max(0, nav.connectEnd - nav.secureConnectionStart) : 0;
+                const ttfb = nav ? Math.max(0, nav.responseStart - nav.requestStart) : 0;
+                const download = nav ? Math.max(0, nav.responseEnd - nav.responseStart) : 0;
+                const domInteractive = nav ? nav.domInteractive : 0;
+                const domComplete = nav ? nav.domComplete : 0;
+                const fcpEntry = paintList.find(p => p.name === "first-contentful-paint");
+                const fcp = fcpEntry ? fcpEntry.startTime : 0;
+
+                if (!nav) return { loadTime: null, dns: 0, tcp: 0, tls: 0, ttfb: 0, download: 0, fcp: 0, domInteractive: 0, domComplete: 0, clientBytes, clientCount };
                 return {
                   loadTime:
                     nav.loadEventEnd > 0
@@ -265,18 +277,28 @@ async function runWorkloadBenchmark() {
                       : nav.domContentLoadedEventEnd > 0
                       ? nav.domContentLoadedEventEnd
                       : nav.responseEnd,
-                  ttfb: nav.responseStart,
-                  domInteractive: nav.domInteractive,
-                  domComplete: nav.domComplete,
+                  dns,
+                  tcp,
+                  tls,
+                  ttfb,
+                  download,
+                  fcp,
+                  domInteractive,
+                  domComplete,
                   clientBytes,
                   clientCount,
                 };
               })
-              .catch(() => ({ loadTime: null, ttfb: null, domInteractive: null, domComplete: null, clientBytes: 0, clientCount: 0 }));
+              .catch(() => ({ loadTime: null, dns: 0, tcp: 0, tls: 0, ttfb: 0, download: 0, fcp: 0, domInteractive: 0, domComplete: 0, clientBytes: 0, clientCount: 0 }));
 
             const effectiveLoad =
               timings.loadTime != null && timings.loadTime > 0 ? timings.loadTime : totalNavMs;
+            const dns = timings.dns != null ? timings.dns.toFixed(1) : "0.0";
+            const tcp = timings.tcp != null ? timings.tcp.toFixed(1) : "0.0";
+            const tls = timings.tls != null ? timings.tls.toFixed(1) : "0.0";
             const ttfb = timings.ttfb != null ? timings.ttfb.toFixed(1) : "0.0";
+            const dl = timings.download != null ? timings.download.toFixed(1) : "0.0";
+            const fcp = timings.fcp != null ? timings.fcp.toFixed(1) : "0.0";
             const domInt = timings.domInteractive != null ? timings.domInteractive.toFixed(1) : "0.0";
             const domComp = timings.domComplete != null ? timings.domComplete.toFixed(1) : "0.0";
 
@@ -301,7 +323,7 @@ async function runWorkloadBenchmark() {
             rawRows.push(
               `${browserInfo.name},${category},"${site.name}","${site.url}",${iter},${startupMs.toFixed(
                 1
-              )},${effectiveLoad.toFixed(1)},${ttfb},${domInt},${domComp},${tele.peakCpu.toFixed(
+              )},${effectiveLoad.toFixed(1)},${dns},${tcp},${tls},${ttfb},${dl},${fcp},${domInt},${domComp},${tele.peakCpu.toFixed(
                 2
               )},${tele.avgCpu.toFixed(2)},${tele.peakMemoryMB.toFixed(1)},${tele.finalMemoryMB.toFixed(1)},${totalRequests},${transferMB},${transferRateKBs}`
             );
@@ -311,13 +333,13 @@ async function runWorkloadBenchmark() {
             );
 
             networkRows.push(
-              `${browserInfo.name},${iter},${category},"${site.name}","${site.url}",${totalRequests},${totalTransBytes},${transferMB},${transferRateKBs}`
+              `${browserInfo.name},${iter},${category},"${site.name}","${site.url}",${totalRequests},${totalTransBytes},${transferMB},${transferRateKBs},${dns},${tcp},${tls},${ttfb},${dl},${fcp}`
             );
 
             console.log(
               `      • ${site.name.padEnd(20)} | Load: ${effectiveLoad
                 .toFixed(0)
-                .padStart(5)}ms | RAM: ${tele.peakMemoryMB
+                .padStart(5)}ms (TTFB: ${ttfb}ms, FCP: ${fcp}ms) | RAM: ${tele.peakMemoryMB
                 .toFixed(0)
                 .padStart(5)}MB | CPU: ${tele.peakCpu.toFixed(1).padStart(4)}% | Net: ${transferMB.toFixed(1)}MB (${transferRateKBs} KB/s)`
             );

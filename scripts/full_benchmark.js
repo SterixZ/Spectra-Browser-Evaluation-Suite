@@ -169,14 +169,35 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       const timing = await page.evaluate(() => {
         const nav = performance.getEntriesByType("navigation")[0];
         const resList = performance.getEntriesByType("resource");
+        const paintList = performance.getEntriesByType("paint");
+
         let clientBytes = nav ? (nav.transferSize || nav.encodedBodySize || 0) : 0;
         let clientCount = 1;
         for (const r of resList) {
           clientCount++;
           clientBytes += (r.transferSize || r.encodedBodySize || r.decodedBodySize || 0);
         }
+
+        const dns = nav ? Math.max(0, nav.domainLookupEnd - nav.domainLookupStart) : 0;
+        const tcp = nav ? Math.max(0, nav.connectEnd - nav.connectStart) : 0;
+        const tls = nav && nav.secureConnectionStart > 0 ? Math.max(0, nav.connectEnd - nav.secureConnectionStart) : 0;
+        const ttfb = nav ? Math.max(0, nav.responseStart - nav.requestStart) : 0;
+        const download = nav ? Math.max(0, nav.responseEnd - nav.responseStart) : 0;
+        const domInteractive = nav ? nav.domInteractive : 0;
+        const domComplete = nav ? nav.domComplete : 0;
+        const fcpEntry = paintList.find(p => p.name === "first-contentful-paint");
+        const fcp = fcpEntry ? fcpEntry.startTime : 0;
+
         return {
           loadMs: nav ? nav.loadEventEnd : null,
+          dns,
+          tcp,
+          tls,
+          ttfb,
+          download,
+          domInteractive,
+          domComplete,
+          fcp,
           clientBytes,
           clientCount,
         };
@@ -193,13 +214,20 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       const transferMB = Number((totalBytes / (1024 * 1024)).toFixed(2));
       const transferRateKBs = Number(((totalBytes / 1024) / (finalLoadMs / 1000 || 1)).toFixed(1));
 
+      const dnsMs = (timing?.dns || 0).toFixed(1);
+      const tcpMs = (timing?.tcp || 0).toFixed(1);
+      const tlsMs = (timing?.tls || 0).toFixed(1);
+      const ttfbMs = (timing?.ttfb || 0).toFixed(1);
+      const dlMs = (timing?.download || 0).toFixed(1);
+      const fcpMs = (timing?.fcp || 0).toFixed(1);
+
       if (finalLoadMs != null) {
         pageloadCsv.rows.push(`${browserInfo.name},${run},${url},${finalLoadMs.toFixed(2)}`);
         networkCsv.rows.push(
-          `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs}`
+          `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs},${dnsMs},${tcpMs},${tlsMs},${ttfbMs},${dlMs},${fcpMs}`
         );
         console.log(
-          `  ${url}: ${finalLoadMs.toFixed(0)}ms load | peak_cpu=${stats.peakCpu}% peak_mem=${stats.peakMemoryMB}MB | ${transferMB}MB (${finalReqCount} reqs @ ${transferRateKBs} KB/s)`
+          `  ${url}: ${finalLoadMs.toFixed(0)}ms load (TTFB: ${ttfbMs}ms, FCP: ${fcpMs}ms) | peak_cpu=${stats.peakCpu}% peak_mem=${stats.peakMemoryMB}MB | ${transferMB}MB (${finalReqCount} reqs @ ${transferRateKBs} KB/s)`
         );
       }
     } catch {
@@ -274,7 +302,7 @@ async function runSpeedometer(browserInfo, runNumber) {
   const metricsCsv = { rows: ["Browser,Run,Startup(ms),CPU(%),Memory(MB)"] };
   const pageloadCsv = { rows: ["Browser,Run,Website,LoadTime(ms)"] };
   const speedometerCsv = { rows: ["Browser,Run,Score"] };
-  const networkCsv = { rows: ["Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s)"] };
+  const networkCsv = { rows: ["Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms)"] };
 
   for (const browserInfo of getLaunchers()) {
     console.log(`\n========== ${browserInfo.name} ==========`);
