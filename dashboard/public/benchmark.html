@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Browser Performance — Benchmark Evaluation</title>
+<title>Browser Performance — Evaluation Suite</title>
 <script>
   document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
 </script>
@@ -37,10 +37,6 @@
       <button class="nav-item" onclick="switchPageView('table', this)">
         <span>📋</span>
         <span>Comparison & Ratios</span>
-      </button>
-      <button class="nav-item" onclick="switchPageView('workloads', this)">
-        <span>⚡</span>
-        <span>Performance Comparison</span>
       </button>
       <button class="nav-item" onclick="switchPageView('logs', this)">
         <span>📑</span>
@@ -81,7 +77,7 @@
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <span class="pill-tag pill-purple" id="runBadge">RUN: LOADING...</span>
-        <span class="pill-tag pill-gray" id="testRunsCount">10 sample iterations</span>
+        <span class="pill-tag pill-gray" id="testRunsCount">Sample iterations</span>
       </div>
     </div>
 
@@ -236,7 +232,7 @@
       </div>
 
       <!-- 2. The Ratio Game (Raj Jain Ch. 11.5) -->
-      <div class="card">
+      <div class="card" style="margin-bottom:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
           <div>
             <div style="font-size:18px; font-weight:800; color:var(--text);">The Ratio Game (Normalized Performance Matrix)</div>
@@ -266,51 +262,11 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- PAGE 4: PERFORMANCE COMPARISON (LIGHT VS HEAVY WORKLOADS) -->
-    <!-- ================================================================= -->
-    <div id="view-workloads" class="page-view">
-      
-      <!-- Workload Header Card -->
-      <div class="hero-winner-card" style="margin-bottom:24px;">
-        <div>
-          <div class="winner-badge">Workload Benchmark Results</div>
-          <div class="winner-heading" id="workloadHeadline">Lightweight vs. Heavyweight Web Workload Comparison</div>
-          <div class="winner-text" id="workloadDesc">
-            Measures how each browser scales under stress from 5 lightweight document sites to 5 heavyweight dynamic SPAs (5 iterations each).
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <label style="font-size:13px; font-weight:700; color:var(--text);">Workload Run:</label>
-          <select id="workloadRunSelect" class="theme-select" onchange="loadWorkloadRun(this.value)" style="min-width:180px; font-weight:700;"></select>
-        </div>
-      </div>
-
-      <!-- Workload Visual Chart -->
-      <div class="card" style="margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
-          <div>
-            <div style="font-size:18px; font-weight:800; color:var(--text);" id="workloadChartTitle">Page Load Time: Light vs Heavy Websites (ms)</div>
-            <div style="font-size:13px; color:var(--muted);">Comparing average latency and RAM consumption between lightweight and heavy sites</div>
-          </div>
-          <div class="btn-group">
-            <button class="tab-btn active" onclick="setWorkloadChart('load', this)">Load Time (ms)</button>
-            <button class="tab-btn" onclick="setWorkloadChart('ram', this)">RAM Usage (MB)</button>
-            <button class="tab-btn" onclick="setWorkloadChart('cpu', this)">CPU Load (%)</button>
-          </div>
-        </div>
-        <div style="height:380px; position:relative;">
-          <canvas id="workloadChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Workload Comparative Matrix Table -->
-      <div class="card" style="margin-bottom:24px;">
+      <!-- 3. Workload Overhead & Inflation Ratios (Shown if workload data exists in this run) -->
+      <div class="card" id="workloadSection" style="display:none;">
         <div style="margin-bottom:18px;">
-          <div style="font-size:18px; font-weight:800; color:var(--text);">Workload Overhead & Inflation Ratios</div>
-          <div style="font-size:13px; color:var(--muted);">Performance degradation factor when transitioning from lightweight to heavyweight applications</div>
+          <div style="font-size:18px; font-weight:800; color:var(--text);">Workload Stress: Lightweight vs Heavyweight Inflation</div>
+          <div style="font-size:13px; color:var(--muted);">Performance degradation factor when transitioning from text documents to heavy SPAs</div>
         </div>
         <div class="table-scroll">
           <table>
@@ -332,39 +288,10 @@
         </div>
       </div>
 
-      <!-- Raw Workload Site Observations -->
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
-          <div>
-            <div style="font-size:18px; font-weight:800; color:var(--text);">Detailed Site Observations</div>
-            <div style="font-size:13px; color:var(--muted);">Individual sample records across all 10 sites and 5 iterations</div>
-          </div>
-          <input type="text" id="workloadFilter" class="theme-input" placeholder="Search site or browser..." onkeyup="filterWorkloadRows()" style="width:220px;" />
-        </div>
-        <div class="table-scroll" style="max-height:450px;">
-          <table id="workloadTable">
-            <thead>
-              <tr>
-                <th>Browser</th>
-                <th>Category</th>
-                <th>Site Name</th>
-                <th>Iter</th>
-                <th>Load Time</th>
-                <th>TTFB</th>
-                <th>DOM Complete</th>
-                <th>CPU %</th>
-                <th>RAM (MB)</th>
-              </tr>
-            </thead>
-            <tbody id="workloadTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
 
     <!-- ================================================================= -->
-    <!-- PAGE 5: DEDICATED RAW LOGS VIEW -->
+    <!-- PAGE 4: DEDICATED RAW LOGS VIEW -->
     <!-- ================================================================= -->
     <div id="view-logs" class="page-view">
       <div class="card">
@@ -374,10 +301,11 @@
             <div style="font-size:13px; color:var(--muted);">Inspect logged sample entries from benchmark runs</div>
           </div>
           <div style="display:flex; gap:12px; align-items:center;">
-            <div class="btn-group">
+            <div class="btn-group" id="logTabGroup">
               <button class="tab-btn active" onclick="switchCsvTab('pageloads', this)">Page Loads</button>
               <button class="tab-btn" onclick="switchCsvTab('metrics', this)">System Metrics</button>
               <button class="tab-btn" onclick="switchCsvTab('speedometer', this)">Speedometer</button>
+              <button class="tab-btn" id="workloadLogTabBtn" style="display:none;" onclick="switchCsvTab('workload_raw', this)">Workload Samples</button>
             </div>
             <input type="text" id="logFilter" class="theme-input" placeholder="Search logs..." onkeyup="filterLogs()" style="width:200px;" />
           </div>
@@ -402,12 +330,25 @@
     Firefox: { bg: 'rgba(249, 115, 22, 0.85)', border: '#f97316' },
   };
 
+  const CANONICAL_SITES = [
+    "https://www.google.com",
+    "https://github.com",
+    "https://stackoverflow.com",
+    "https://www.wikipedia.org",
+    "https://www.youtube.com",
+    "https://www.reddit.com",
+    "https://www.microsoft.com",
+    "https://developer.mozilla.org",
+    "https://playwright.dev",
+    "https://openai.com",
+  ];
+
   let benchmarkData = null;
-  let workloadData = null;
   let chartInstance = null;
-  let workloadChartInstance = null;
-  let currentChartMetric = 'pageload';
-  let currentWorkloadMetric = 'load';
+  let chartMode = 'pageload';
+  let chartStartupInstance = null;
+  let chartCpuInstance = null;
+  let chartMemInstance = null;
   let currentCsv = 'pageloads';
   let rawCsvData = {};
 
@@ -415,7 +356,6 @@
     overview: { title: "Benchmark Overview", desc: "Executive summary and multi-dimensional performance rankings across tested browsers" },
     charts: { title: "Visual Charts", desc: "Interactive latency and resource consumption charts across websites" },
     table: { title: "Comparison & Ratio Matrix", desc: "Side-by-side performance scorecard combined with Raj Jain's Ratio Game (Ch. 11.5)" },
-    workloads: { title: "Performance Comparison (Workloads)", desc: "Lightweight (5 sites) vs. Heavyweight (5 sites) benchmark results and inflation ratios" },
     logs: { title: "Raw Observation Logs", desc: "Inspection records and exact metric logs from benchmark CSVs" },
   };
 
@@ -438,9 +378,7 @@
     if (viewId === 'table') {
       renderTable(benchmarkData?.summary || {});
       renderRatioGame();
-    }
-    if (viewId === 'workloads') {
-      setTimeout(renderWorkloadView, 50);
+      renderWorkloadSection();
     }
 
     window.location.hash = viewId;
@@ -456,9 +394,8 @@
 
   async function init() {
     const res = await fetch("/api/runs");
-    const { runs, workloads } = await res.json();
+    const { runs } = await res.json();
     const select = document.getElementById("runSelect");
-    const workloadSelect = document.getElementById("workloadRunSelect");
 
     if (runs && runs.length) {
       select.innerHTML = runs.map(r => `<option value="${r}">${r}</option>`).join("");
@@ -468,16 +405,6 @@
 
       select.addEventListener('change', () => loadRun(select.value));
       await loadRun(select.value);
-    }
-
-    if (workloads && workloads.length && workloadSelect) {
-      workloadSelect.innerHTML = workloads.map(w => `<option value="${w}">${w}</option>`).join("");
-      workloadSelect.addEventListener('change', () => loadWorkloadRun(workloadSelect.value));
-      await loadWorkloadRun(workloads[0]);
-    } else if (workloadSelect) {
-      workloadSelect.innerHTML = `<option value="">(No workload runs found)</option>`;
-      document.getElementById("workloadHeadline").innerText = "No Workload Runs Found";
-      document.getElementById("workloadDesc").innerText = "Run `npm run bench:workloads` in your terminal to benchmark 5 light vs 5 heavy websites.";
     }
 
     const initialHash = window.location.hash.replace('#', '');
@@ -502,24 +429,20 @@
       renderChart();
       renderTable(data.summary);
       renderRatioGame();
+      renderWorkloadSection();
       renderLogs(currentCsv);
+
+      // Toggle workload log tab if available
+      const workloadTabBtn = document.getElementById("workloadLogTabBtn");
+      if (workloadTabBtn) {
+        workloadTabBtn.style.display = (data.workloads && data.workloads.raw?.length) ? '' : 'none';
+      }
 
       const url = new URL(window.location);
       url.searchParams.set('dir', loadedDir);
       window.history.replaceState({}, '', url);
     } catch (err) {
       console.error("Failed to load run:", err);
-    }
-  }
-
-  async function loadWorkloadRun(dir) {
-    try {
-      const res = await fetch(`/api/workloads?dir=${encodeURIComponent(dir)}`);
-      const { data } = await res.json();
-      workloadData = data;
-      renderWorkloadView();
-    } catch (err) {
-      console.error("Failed to load workloads:", err);
     }
   }
 
@@ -725,23 +648,45 @@
     tbody.innerHTML = rows.join('');
   }
 
-  let chartMode = 'pageload';
-  let chartStartupInstance = null;
-  let chartCpuInstance = null;
-  let chartMemInstance = null;
+  function renderWorkloadSection() {
+    const section = document.getElementById("workloadSection");
+    const tbody = document.getElementById("workloadCompBody");
+    const workloads = benchmarkData?.workloads;
 
-  const CANONICAL_SITES = [
-    "https://www.google.com",
-    "https://github.com",
-    "https://stackoverflow.com",
-    "https://www.wikipedia.org",
-    "https://www.youtube.com",
-    "https://www.reddit.com",
-    "https://www.microsoft.com",
-    "https://developer.mozilla.org",
-    "https://playwright.dev",
-    "https://openai.com",
-  ];
+    if (!workloads || !workloads.comparison || !workloads.comparison.length) {
+      if (section) section.style.display = "none";
+      return;
+    }
+
+    if (section) section.style.display = "block";
+    if (!tbody) return;
+
+    tbody.innerHTML = workloads.comparison.map(row => {
+      const loadRatioNum = parseFloat(row.LoadInflationRatio) || 1;
+      let verdict = `<span class="pill-tag pill-green">Minimal Penalty (${row.LoadInflationRatio})</span>`;
+      if (loadRatioNum > 1.35) {
+        verdict = `<span class="pill-tag pill-amber">Significant Overhead (${row.LoadInflationRatio})</span>`;
+      }
+
+      const lightRam = row.Light_PeakRAM_MB || row.Light_MeanRAM_MB || '—';
+      const heavyRam = row.Heavy_PeakRAM_MB || row.Heavy_MeanRAM_MB || '—';
+      const heavyCpu = row.Heavy_PeakCPU || row.Heavy_MeanCPU || '—';
+
+      return `
+        <tr>
+          <td><strong>${row.Browser}</strong></td>
+          <td class="mono">${row.Light_MeanLoadMs} ms</td>
+          <td class="mono">${row.Heavy_MeanLoadMs} ms</td>
+          <td><strong style="color:${loadRatioNum < 1.3 ? 'var(--green)' : 'var(--amber)'}; font-family:var(--font-mono);">${row.LoadInflationRatio}</strong></td>
+          <td class="mono">${lightRam} MB</td>
+          <td class="mono">${heavyRam} MB</td>
+          <td><strong style="color:var(--text); font-family:var(--font-mono);">${row.RAM_InflationRatio}</strong></td>
+          <td class="mono">${heavyCpu}%</td>
+          <td>${verdict}</td>
+        </tr>
+      `;
+    }).join('');
+  }
 
   function getCanonicalSiteIndex(url) {
     const norm = url.replace(/https?:\/\//i, '').replace(/www\./i, '').replace(/\/.*$/, '').toLowerCase();
@@ -952,184 +897,6 @@
     }
   }
 
-  // =========================================================================
-  // WORKLOAD BENCHMARKS LOGIC (Light vs Heavy 5 sites x 5 iterations)
-  // =========================================================================
-  function setWorkloadChart(metric, btn) {
-    currentWorkloadMetric = metric;
-    Array.from(btn.parentElement.children).forEach(c => c.className = 'tab-btn');
-    btn.className = 'tab-btn active';
-    renderWorkloadChart();
-  }
-
-  function renderWorkloadView() {
-    if (!workloadData) return;
-    renderWorkloadCompTable();
-    renderWorkloadChart();
-    renderWorkloadRawTable();
-  }
-
-  function renderWorkloadCompTable() {
-    const comp = workloadData?.comparison || [];
-    const tbody = document.getElementById("workloadCompBody");
-    if (!tbody || !comp.length) return;
-
-    tbody.innerHTML = comp.map(row => {
-      const loadRatioNum = parseFloat(row.LoadInflationRatio) || 1;
-      let verdict = `<span class="pill-tag pill-green">Minimal Penalty (${row.LoadInflationRatio})</span>`;
-      if (loadRatioNum > 1.35) {
-        verdict = `<span class="pill-tag pill-amber">Significant Overhead (${row.LoadInflationRatio})</span>`;
-      }
-
-      const lightRam = row.Light_PeakRAM_MB || row.Light_MeanRAM_MB || '—';
-      const heavyRam = row.Heavy_PeakRAM_MB || row.Heavy_MeanRAM_MB || '—';
-      const heavyCpu = row.Heavy_PeakCPU || row.Heavy_MeanCPU || '—';
-
-      return `
-        <tr>
-          <td><strong>${row.Browser}</strong></td>
-          <td class="mono">${row.Light_MeanLoadMs} ms</td>
-          <td class="mono">${row.Heavy_MeanLoadMs} ms</td>
-          <td><strong style="color:${loadRatioNum < 1.3 ? 'var(--green)' : 'var(--amber)'}; font-family:var(--font-mono);">${row.LoadInflationRatio}</strong></td>
-          <td class="mono">${lightRam} MB</td>
-          <td class="mono">${heavyRam} MB</td>
-          <td><strong style="color:var(--text); font-family:var(--font-mono);">${row.RAM_InflationRatio}</strong></td>
-          <td class="mono">${heavyCpu}%</td>
-          <td>${verdict}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  function renderWorkloadChart() {
-    if (!workloadData || typeof Chart === 'undefined') return;
-    const ctx = document.getElementById("workloadChart")?.getContext("2d");
-    if (!ctx) return;
-    if (workloadChartInstance) workloadChartInstance.destroy();
-
-    const summary = workloadData.summary || [];
-    const theme = getThemeColors();
-    const browsers = ['Chrome', 'Edge', 'Firefox'];
-
-    let lightVals = [];
-    let heavyVals = [];
-    let yTitle = 'Load Time (ms)';
-
-    if (currentWorkloadMetric === 'load') {
-      document.getElementById("workloadChartTitle").innerText = "Page Load Time: Light vs Heavy Websites (ms)";
-      yTitle = 'Load Time (ms)';
-      browsers.forEach(b => {
-        const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
-        const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
-        lightVals.push(l ? Number(l.MeanLoadMs) : 0);
-        heavyVals.push(h ? Number(h.MeanLoadMs) : 0);
-      });
-    } else if (currentWorkloadMetric === 'ram') {
-      document.getElementById("workloadChartTitle").innerText = "Peak RAM Allocation: Light vs Heavy Websites (MB)";
-      yTitle = 'RAM (MB)';
-      browsers.forEach(b => {
-        const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
-        const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
-        const lRam = l ? (l.MeanPeakMemoryMB || l.MeanMemoryMB) : 0;
-        const hRam = h ? (h.MeanPeakMemoryMB || h.MeanMemoryMB) : 0;
-        lightVals.push(Number(lRam));
-        heavyVals.push(Number(hRam));
-      });
-    } else {
-      document.getElementById("workloadChartTitle").innerText = "Peak CPU Spike during Load: Light vs Heavy Websites (%)";
-      yTitle = 'CPU (%)';
-      browsers.forEach(b => {
-        const l = summary.find(s => s.Browser === b && s.Category === 'Lightweight');
-        const h = summary.find(s => s.Browser === b && s.Category === 'Heavyweight');
-        const lCpu = l ? (l.MeanPeakCpuPercent || l.MeanCpuPercent) : 0;
-        const hCpu = h ? (h.MeanPeakCpuPercent || h.MeanCpuPercent) : 0;
-        lightVals.push(Number(lCpu));
-        heavyVals.push(Number(hCpu));
-      });
-    }
-
-    workloadChartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: browsers,
-        datasets: [
-          {
-            label: 'Lightweight Workloads (5 sites)',
-            data: lightVals,
-            backgroundColor: 'rgba(16, 185, 129, 0.8)',
-            borderColor: '#10b981',
-            borderWidth: 1.5,
-            borderRadius: 5,
-          },
-          {
-            label: 'Heavyweight Workloads (5 sites)',
-            data: heavyVals,
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            borderColor: '#ef4444',
-            borderWidth: 1.5,
-            borderRadius: 5,
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: yTitle, color: theme.text },
-            ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
-            grid: { color: theme.grid },
-          },
-          x: {
-            ticks: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } },
-            grid: { display: false },
-          }
-        },
-        plugins: {
-          legend: { labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } } },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ${yTitle.includes('ms') ? 'ms' : yTitle.includes('MB') ? 'MB' : '%'}`
-            }
-          }
-        }
-      }
-    });
-  }
-
-  function renderWorkloadRawTable() {
-    const raw = workloadData?.raw || [];
-    const tbody = document.getElementById("workloadTableBody");
-    if (!tbody || !raw.length) return;
-
-    tbody.innerHTML = raw.map(r => {
-      const cpuVal = r.PeakCpuPercent != null ? r.PeakCpuPercent : r.CpuPercent;
-      const memVal = r.PeakMemoryMB != null ? r.PeakMemoryMB : r.MemoryMB;
-
-      return `
-        <tr>
-          <td><strong>${r.Browser}</strong></td>
-          <td><span class="pill-tag ${r.Category === 'Lightweight' ? 'pill-green' : 'pill-amber'}">${r.Category}</span></td>
-          <td>${r.SiteName || r.Url}</td>
-          <td class="mono">#${r.Iteration}</td>
-          <td class="mono">${Number(r.LoadTimeMs).toFixed(0)} ms</td>
-          <td class="mono">${r.TTFB_Ms} ms</td>
-          <td class="mono">${r.DomCompleteMs} ms</td>
-          <td class="mono">${cpuVal}%</td>
-          <td class="mono">${Number(memVal).toFixed(0)} MB</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  function filterWorkloadRows() {
-    const q = document.getElementById("workloadFilter")?.value.toLowerCase() || '';
-    document.querySelectorAll("#workloadTable tbody tr").forEach(r => {
-      r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
-    });
-  }
-
   function renderLogs(tabName) {
     currentCsv = tabName;
     const rows = rawCsvData[tabName] || [];
@@ -1138,7 +905,7 @@
 
     if (!rows.length) {
       thead.innerHTML = '';
-      tbody.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center;">No logs available.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center;">No logs available for this section.</td></tr>';
       return;
     }
 

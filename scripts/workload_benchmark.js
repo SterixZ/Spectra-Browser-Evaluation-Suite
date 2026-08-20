@@ -2,10 +2,10 @@
 // BROWSER PERFORMANCE EVALUATION: LIGHTWEIGHT VS. HEAVYWEIGHT WORKLOAD SUITE
 // Methodology: Raj K. Jain, "The Art of Computer Systems Performance Analysis"
 // ============================================================================
-// Measures cold startup speed, comprehensive page load latency (TTFB, DOM, Load),
+// Measures cold startup speed, page load latency (TTFB, DOM, Load),
 // and continuous active-navigation peak CPU / RAM resource demand across 5 Lightweight
 // and 5 Heavyweight websites with 5 iterations per browser and strict 5-second
-// stabilization cooldown pauses.
+// stabilization cooldown pauses. Outputs directly to standard `results_timestamp` folders.
 
 const os = require("os");
 const fs = require("fs");
@@ -139,7 +139,7 @@ async function runWorkloadBenchmark() {
     date.getDate()
   ).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
 
-  const outputDir = path.join(__dirname, "..", `workloads_${timestamp}`);
+  const outputDir = path.join(__dirname, "..", `results_${timestamp}`);
   fs.mkdirSync(outputDir, { recursive: true });
 
   console.log(`\n========================================================================`);
@@ -153,6 +153,10 @@ async function runWorkloadBenchmark() {
   const rawRows = [
     "Browser,Category,SiteName,Url,Iteration,StartupMs,LoadTimeMs,TTFB_Ms,DomInteractiveMs,DomCompleteMs,PeakCpuPercent,AvgCpuPercent,PeakMemoryMB,FinalMemoryMB",
   ];
+
+  const metricsRows = ["browser,run,startup_time_ms,cpu_percent,memory_mb"];
+  const pageloadRows = ["browser,run,url,load_time_ms"];
+  const speedometerRows = ["browser,run,score"];
 
   const launchers = getLaunchers();
   const aggregated = {};
@@ -170,6 +174,10 @@ async function runWorkloadBenchmark() {
     for (let iter = 1; iter <= ITERATIONS; iter++) {
       console.log(`\n  [${browserInfo.name}] Iteration ${iter}/${ITERATIONS}`);
 
+      let iterCpus = [];
+      let iterMems = [];
+      let iterStartupMs = 0;
+
       // Evaluate both categories
       for (const [category, siteList] of Object.entries(WORKLOADS)) {
         console.log(`    📁 Category: ${category}`);
@@ -178,6 +186,7 @@ async function runWorkloadBenchmark() {
         const startStartup = performance.now();
         const browser = await browserInfo.launch();
         const startupMs = performance.now() - startStartup;
+        iterStartupMs = startupMs;
         aggregated[browserInfo.name].startupTimes.push(startupMs);
 
         const context = await browser.newContext();
@@ -246,12 +255,19 @@ async function runWorkloadBenchmark() {
             aggregated[browserInfo.name][category].peakCpus.push(tele.peakCpu);
             aggregated[browserInfo.name][category].peakMems.push(tele.peakMemoryMB);
 
+            iterCpus.push(tele.peakCpu);
+            iterMems.push(tele.peakMemoryMB);
+
             rawRows.push(
               `${browserInfo.name},${category},"${site.name}","${site.url}",${iter},${startupMs.toFixed(
                 1
               )},${effectiveLoad.toFixed(1)},${ttfb},${domInt},${domComp},${tele.peakCpu.toFixed(
                 2
               )},${tele.avgCpu.toFixed(2)},${tele.peakMemoryMB.toFixed(1)},${tele.finalMemoryMB.toFixed(1)}`
+            );
+
+            pageloadRows.push(
+              `${browserInfo.name},${iter},${site.url},${effectiveLoad.toFixed(2)}`
             );
 
             console.log(
@@ -265,24 +281,30 @@ async function runWorkloadBenchmark() {
             console.log(`      • ${site.name.padEnd(20)} | ⚠️ Timeout/Skipped (${err.message.slice(0, 30)})`);
           } finally {
             await page.close().catch(() => {});
-            // Strict 5-second rest between websites
             await sleep(INTER_SITE_DELAY_MS);
           }
         }
 
         await context.close().catch(() => {});
         await browser.close().catch(() => {});
-        // Strict 5-second rest between iterations
         await sleep(INTER_ITERATION_DELAY_MS);
       }
+
+      const meanIterCpu = iterCpus.length ? (iterCpus.reduce((a, b) => a + b, 0) / iterCpus.length) : 0;
+      const meanIterMem = iterMems.length ? (iterMems.reduce((a, b) => a + b, 0) / iterMems.length) : 0;
+      metricsRows.push(`${browserInfo.name},${iter},${iterStartupMs.toFixed(2)},${meanIterCpu.toFixed(2)},${meanIterMem.toFixed(1)}`);
     }
   }
 
-  // 1. Write Raw CSV
-  const rawCsvPath = path.join(outputDir, "workload_raw.csv");
-  fs.writeFileSync(rawCsvPath, rawRows.join("\n"), "utf8");
+  // Write Standard Run CSVs
+  fs.writeFileSync(path.join(outputDir, "metrics.csv"), metricsRows.join("\n"), "utf8");
+  fs.writeFileSync(path.join(outputDir, "pageloads.csv"), pageloadRows.join("\n"), "utf8");
+  fs.writeFileSync(path.join(outputDir, "speedometer.csv"), speedometerRows.join("\n"), "utf8");
 
-  // 2. Generate and Write Comparative Summary CSV
+  // Write Workload Specific CSVs
+  fs.writeFileSync(path.join(outputDir, "workload_raw.csv"), rawRows.join("\n"), "utf8");
+
+  // Generate and Write Comparative Summary CSV
   const summaryRows = [
     "Browser,Category,SampleCount,MeanStartupMs,MeanLoadMs,MedianLoadMs,P90LoadMs,MeanPeakCpuPercent,MeanPeakMemoryMB,CoV_LoadTime",
   ];
@@ -355,18 +377,15 @@ async function runWorkloadBenchmark() {
     );
   }
 
-  const summaryCsvPath = path.join(outputDir, "workload_summary.csv");
-  fs.writeFileSync(summaryCsvPath, summaryRows.join("\n"), "utf8");
-
-  const compCsvPath = path.join(outputDir, "workload_comparison.csv");
-  fs.writeFileSync(compCsvPath, comparisonRows.join("\n"), "utf8");
+  fs.writeFileSync(path.join(outputDir, "workload_summary.csv"), summaryRows.join("\n"), "utf8");
+  fs.writeFileSync(path.join(outputDir, "workload_comparison.csv"), comparisonRows.join("\n"), "utf8");
 
   console.log(`========================================================================`);
   console.log(`✅ BENCHMARK COMPLETE!`);
-  console.log(`📁 Files generated in: ${outputDir}`);
-  console.log(`   1. workload_raw.csv        (Detailed observation rows with Peak CPU & RAM)`);
-  console.log(`   2. workload_summary.csv    (Category aggregate statistics)`);
-  console.log(`   3. workload_comparison.csv (Direct Light vs Heavy inflation ratios)`);
+  console.log(`📁 All data saved to: ${outputDir}`);
+  console.log(`   • metrics.csv & pageloads.csv`);
+  console.log(`   • workload_raw.csv & workload_summary.csv`);
+  console.log(`   • workload_comparison.csv`);
   console.log(`========================================================================\n`);
 }
 

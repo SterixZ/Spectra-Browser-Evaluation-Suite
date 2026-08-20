@@ -283,13 +283,32 @@ function getBenchmarkData(resultsDir) {
     speedometer: computePairwise(raw.speedometer, "pts"),
   };
 
+  const workloadCompPath = path.join(resultsDir, "workload_comparison.csv");
+  const workloadRawPath = path.join(resultsDir, "workload_raw.csv");
+  const workloadSummaryPath = path.join(resultsDir, "workload_summary.csv");
+
+  let workloads = null;
+  if (fs.existsSync(workloadCompPath)) {
+    workloads = {
+      comparison: parseCsv(workloadCompPath),
+      summary: fs.existsSync(workloadSummaryPath) ? parseCsv(workloadSummaryPath) : [],
+      raw: fs.existsSync(workloadRawPath) ? parseCsv(workloadRawPath) : [],
+    };
+  }
+
   return {
     summary,
     siteSummary,
     cdf,
     anova,
     pairwise,
-    raw: { metrics, pageloads, speedometer },
+    workloads,
+    raw: {
+      metrics,
+      pageloads,
+      speedometer,
+      workload_raw: workloads ? workloads.raw : [],
+    },
   };
 }
 
