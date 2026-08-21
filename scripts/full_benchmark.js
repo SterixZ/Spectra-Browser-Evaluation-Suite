@@ -163,7 +163,12 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       monitor.start();
 
       const navStart = performance.now();
-      await page.goto(url, { waitUntil: "load", timeout: 30000 });
+      await page
+        .goto(url, { waitUntil: "domcontentloaded", timeout: 25000 })
+        .catch(async () => {
+          await page.goto(url, { waitUntil: "commit", timeout: 25000 });
+        });
+      await page.waitForLoadState("load", { timeout: 8000 }).catch(() => {});
       const navElapsedSec = Math.max(0.1, (performance.now() - navStart) / 1000);
 
       const timing = await page.evaluate(() => {
@@ -266,34 +271,38 @@ async function runSpeedometer(browserInfo, runNumber) {
   console.log(`  Speedometer run ${runNumber}`);
 
   const browser = await browserInfo.launch();
-  const page = await browser.newPage();
-  page.setDefaultTimeout(600000);
+  try {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(600000);
 
-  await page.goto(SPEEDOMETER_URL, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".start-tests-button");
-  await page.click(".start-tests-button");
+    await page.goto(SPEEDOMETER_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForSelector(".start-tests-button", { timeout: 30000 });
+    await sleep(1000);
+    await page.click(".start-tests-button");
 
-  await page.waitForFunction(
-    () => document.body.innerText.includes("Score") && document.body.innerText.includes("±"),
-    null,
-    { timeout: 600000 }
-  );
+    await page.waitForFunction(
+      () => document.body.innerText.includes("Score") && document.body.innerText.includes("±"),
+      null,
+      { timeout: 600000 }
+    );
 
-  const bodyText = await page.locator("body").innerText();
-  const match = bodyText.match(/Score\s*(\d+(\.\d+)?)/);
+    const bodyText = await page.locator("body").innerText();
+    const match = bodyText.match(/Score\s*(\d+(\.\d+)?)/);
 
-  if (!match) {
-    await page.screenshot({
-      path: path.join(RESULTS_DIR, `speedometer_error_${browserInfo.name}_${runNumber}.png`),
-    });
-    await browser.close();
-    throw new Error("Score extraction failed. Screenshot saved.");
+    if (!match) {
+      await page.screenshot({
+        path: path.join(RESULTS_DIR, `speedometer_error_${browserInfo.name}_${runNumber}.png`),
+      });
+      throw new Error("Score extraction failed. Screenshot saved.");
+    }
+
+    const score = Number(match[1]);
+    console.log(`  Speedometer score: ${score}`);
+    return score;
+  } finally {
+    await browser.close().catch(() => {});
+    await sleep(2000);
   }
-
-  const score = Number(match[1]);
-  console.log(`  Speedometer score: ${score}`);
-  await browser.close();
-  return score;
 }
 
 (async () => {
@@ -310,6 +319,7 @@ async function runSpeedometer(browserInfo, runNumber) {
     for (let run = 1; run <= RUNS; run++) {
       console.log(`\nRun ${run}/${RUNS}`);
       await runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, networkCsv);
+      await sleep(3000);
     }
 
     console.log(`\n-- ${browserInfo.name}: Speedometer --`);

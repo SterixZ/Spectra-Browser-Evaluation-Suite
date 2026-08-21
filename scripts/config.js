@@ -7,7 +7,7 @@ module.exports = {
 
   // Scale these to run bigger/smaller benchmarks. Override at the shell:
   //   RUNS=20 node scripts/benchmark.js
-  RUNS: Number(process.env.RUNS) || 5,
+  RUNS: Number(process.env.RUNS) || 3,
   SPEEDOMETER_RUNS: Number(process.env.SPEEDOMETER_RUNS) || 3,
 
   // How long to let the page settle after loading all URLS before sampling
