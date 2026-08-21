@@ -306,6 +306,35 @@
         </div>
       </div>
 
+      <!-- 4. W3C Timing Waterfall & Protocol Breakdown (Shown if network data exists) -->
+      <div class="card" id="w3cWaterfallCard" style="display:none; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:18px; font-weight:800; color:var(--text);">W3C Protocol Timing Waterfall & First Contentful Paint (FCP)</div>
+            <div style="font-size:13px; color:var(--muted);">Phase-by-phase network latency and initial paint breakdown captured via W3C Navigation & Paint Timing Level 2 APIs</div>
+          </div>
+          <span class="pill-tag pill-blue">W3C Level 2 Timing</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Browser</th>
+                <th>DNS Lookup</th>
+                <th>TCP Connect</th>
+                <th>TLS Handshake</th>
+                <th>Time to 1st Byte (TTFB)</th>
+                <th>Content Download</th>
+                <th>First Paint (FCP)</th>
+                <th>Avg Throughput</th>
+                <th>Total Volume</th>
+              </tr>
+            </thead>
+            <tbody id="w3cWaterfallBody"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- ================================================================= -->
@@ -386,6 +415,7 @@
       renderTable(benchmarkData?.summary || {});
       renderRatioGame();
       renderWorkloadSection();
+      renderW3CWaterfall();
     }
 
     window.location.hash = viewId;
@@ -437,6 +467,7 @@
       renderTable(data.summary);
       renderRatioGame();
       renderWorkloadSection();
+      renderW3CWaterfall();
       renderLogs(currentCsv);
 
       const workloadTabBtn = document.getElementById("workloadLogTabBtn");
@@ -711,6 +742,75 @@
           <td><strong style="color:var(--text); font-family:var(--font-mono);">${row.RAM_InflationRatio}</strong></td>
           <td class="mono">${heavyCpu}%</td>
           <td>${verdict}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderW3CWaterfall() {
+    const card = document.getElementById("w3cWaterfallCard");
+    const tbody = document.getElementById("w3cWaterfallBody");
+    const network = benchmarkData?.raw?.network;
+
+    if (!network || !network.length) {
+      if (card) card.style.display = "none";
+      return;
+    }
+
+    const sample = network[0];
+    const hasW3C = ('DNS(ms)' in sample) || ('DNS_Ms' in sample) || ('TTFB(ms)' in sample) || ('TTFB_Ms' in sample);
+    if (!hasW3C) {
+      if (card) card.style.display = "none";
+      return;
+    }
+
+    if (card) card.style.display = "block";
+    if (!tbody) return;
+
+    const byBrowser = {};
+    network.forEach(r => {
+      const b = r.Browser || r.browser;
+      if (!b) return;
+      byBrowser[b] ||= {
+        dns: [], tcp: [], tls: [], ttfb: [], dl: [], fcp: [], rate: [], totalBytes: 0, count: 0
+      };
+
+      const dns = parseFloat(r['DNS(ms)'] || r.DNS_Ms || 0) || 0;
+      const tcp = parseFloat(r['TCP(ms)'] || r.TCP_Ms || 0) || 0;
+      const tls = parseFloat(r['TLS(ms)'] || r.TLS_Ms || 0) || 0;
+      const ttfb = parseFloat(r['TTFB(ms)'] || r.TTFB_Ms || 0) || 0;
+      const dl = parseFloat(r['Download(ms)'] || r.Download_Ms || 0) || 0;
+      const fcp = parseFloat(r['FCP(ms)'] || r.FCP_Ms || 0) || 0;
+      const rate = parseFloat(r['TransferRate(KB/s)'] || r.TransferRateKBs || 0) || 0;
+      const bytes = parseFloat(r.TransferBytes || (r['Transfer(MB)'] * 1024 * 1024) || 0) || 0;
+
+      if (dns > 0) byBrowser[b].dns.push(dns);
+      if (tcp > 0) byBrowser[b].tcp.push(tcp);
+      if (tls > 0) byBrowser[b].tls.push(tls);
+      if (ttfb > 0) byBrowser[b].ttfb.push(ttfb);
+      if (dl > 0) byBrowser[b].dl.push(dl);
+      if (fcp > 0) byBrowser[b].fcp.push(fcp);
+      if (rate > 0) byBrowser[b].rate.push(rate);
+      byBrowser[b].totalBytes += bytes;
+      byBrowser[b].count++;
+    });
+
+    const avg = arr => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '0.0';
+
+    tbody.innerHTML = Object.keys(byBrowser).map(b => {
+      const d = byBrowser[b];
+      const totalMB = (d.totalBytes / (1024 * 1024)).toFixed(1);
+      return `
+        <tr>
+          <td><strong>${b}</strong></td>
+          <td class="mono">${avg(d.dns)} ms</td>
+          <td class="mono">${avg(d.tcp)} ms</td>
+          <td class="mono">${avg(d.tls)} ms</td>
+          <td class="mono">${avg(d.ttfb)} ms</td>
+          <td class="mono">${avg(d.dl)} ms</td>
+          <td class="mono" style="font-weight:700; color:var(--text);">${avg(d.fcp)} ms</td>
+          <td class="mono">${avg(d.rate)} KB/s</td>
+          <td class="mono">${totalMB} MB</td>
         </tr>
       `;
     }).join('');
