@@ -281,22 +281,35 @@ async function runSpeedometer(browserInfo, runNumber) {
     await page.click(".start-tests-button");
 
     await page.waitForFunction(
-      () => document.body.innerText.includes("Score") && document.body.innerText.includes("±"),
+      () => {
+        const text = document.body ? document.body.innerText : "";
+        const scoreElem = document.querySelector("#result-number, .result-number, .score");
+        return (
+          (scoreElem && scoreElem.innerText.trim().length > 0) ||
+          (text.includes("Score") && (text.includes("±") || text.includes("/min")))
+        );
+      },
       null,
       { timeout: 600000 }
     );
 
-    const bodyText = await page.locator("body").innerText();
-    const match = bodyText.match(/Score\s*(\d+(\.\d+)?)/);
+    const score = await page.evaluate(() => {
+      const el = document.querySelector("#result-number, .result-number, .score");
+      if (el && el.innerText.trim().length > 0) {
+        const num = parseFloat(el.innerText.trim());
+        if (!isNaN(num) && num > 0) return num;
+      }
+      const match = document.body.innerText.match(/Score\s*\n*\s*(\d+(?:\.\d+)?)/i);
+      return match ? parseFloat(match[1]) : null;
+    });
 
-    if (!match) {
+    if (!score || isNaN(score)) {
       await page.screenshot({
         path: path.join(RESULTS_DIR, `speedometer_error_${browserInfo.name}_${runNumber}.png`),
       });
       throw new Error("Score extraction failed. Screenshot saved.");
     }
 
-    const score = Number(match[1]);
     console.log(`  Speedometer score: ${score}`);
     return score;
   } finally {
