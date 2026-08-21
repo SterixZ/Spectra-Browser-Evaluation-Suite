@@ -307,7 +307,8 @@ function getBenchmarkData(resultsDir) {
   for (const [site, bMap] of Object.entries(raw.pageloadBySite)) {
     siteSummary[site] = {};
     for (const [b, vals] of Object.entries(bMap)) {
-      siteSummary[site][b] = computeDescriptiveStats(vals);
+      const validVals = vals.filter((v) => typeof v === "number" && !isNaN(v) && v > 0);
+      siteSummary[site][b] = computeDescriptiveStats(validVals);
     }
   }
 

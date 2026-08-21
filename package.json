@@ -1,19 +1,24 @@
 {
   "name": "browserperformance",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Cross-Browser Performance Evaluation Platform (Raj Jain Methodology)",
+  "main": "scripts/benchmark.js",
   "scripts": {
-    "bench": "node scripts/runner.js",
+    "bench": "node scripts/benchmark.js",
     "bench:workloads": "node scripts/workload_benchmark.js",
     "analyze": "node scripts/analyze.js",
-    "dashboard": "node dashboard/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dashboard": "node dashboard/server.js"
   },
-  "keywords": [],
+  "keywords": [
+    "browser",
+    "benchmark",
+    "playwright",
+    "performance",
+    "speedometer",
+    "raj-jain"
+  ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "chart.js": "^4.5.1",
     "express": "^4.19.2",
