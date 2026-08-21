@@ -342,9 +342,13 @@ function getBenchmarkData(resultsDir) {
     };
   }
 
-  const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
+  const manifestPath = path.join(resultsDir, "run_manifest.json");
+  const manifest = fs.existsSync(manifestPath)
+    ? JSON.parse(fs.readFileSync(manifestPath, "utf8"))
+    : null;
 
   return {
+    manifest,
     summary,
     siteSummary,
     cdf,

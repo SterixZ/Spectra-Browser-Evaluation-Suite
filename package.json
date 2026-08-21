@@ -1,13 +1,17 @@
 {
   "name": "browserperformance",
   "version": "2.0.0",
-  "description": "Cross-Browser Performance Evaluation Platform (Raj Jain Methodology)",
-  "main": "scripts/benchmark.js",
+  "description": "Spectra Cross-Browser Performance Evaluation Platform (Raj Jain Methodology)",
+  "main": "spectra.js",
+  "bin": {
+    "spectra": "./spectra.js"
+  },
   "scripts": {
-    "bench": "node scripts/benchmark.js",
-    "bench:workloads": "node scripts/workload_benchmark.js",
-    "analyze": "node scripts/analyze.js",
-    "dashboard": "node dashboard/server.js"
+    "bench": "node spectra.js run --suite standard",
+    "bench:workloads": "node spectra.js run --suite workloads",
+    "bench:all": "node spectra.js run --suite all",
+    "analyze": "node spectra.js analyze",
+    "dashboard": "node spectra.js serve"
   },
   "keywords": [
     "browser",
@@ -15,7 +19,9 @@
     "playwright",
     "performance",
     "speedometer",
-    "raj-jain"
+    "raj-jain",
+    "w3c-timing",
+    "cdp"
   ],
   "author": "",
   "license": "ISC",
