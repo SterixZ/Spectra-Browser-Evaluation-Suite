@@ -36,12 +36,10 @@ function getLaunchers(filterNames = null) {
         ? chromium.launch({
             channel: b.channel,
             headless: false,
-            args: CHROMIUM_ARGS,
             ...options,
           })
         : firefox.launch({
             headless: false,
-            args: FIREFOX_ARGS,
             ...options,
           }),
   }));

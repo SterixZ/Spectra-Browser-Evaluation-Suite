@@ -24,10 +24,10 @@ function getLaunchers() {
   return BROWSERS.map((b) => ({
     name: b.name,
     process: b.process,
-    launch: () =>
+    launch: (options = {}) =>
       b.channel
-        ? chromium.launch({ channel: b.channel, headless: false, args: CHROMIUM_ARGS })
-        : firefox.launch({ headless: false, args: FIREFOX_ARGS }),
+        ? chromium.launch({ channel: b.channel, headless: false, ...options })
+        : firefox.launch({ headless: false, ...options }),
   }));
 }
 
