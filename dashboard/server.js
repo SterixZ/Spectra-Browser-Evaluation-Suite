@@ -388,9 +388,6 @@ function getBenchmarkData(resultsDir) {
     };
   }
 
-  const networkPath = path.join(resultsDir, "network.csv");
-  const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
-
   return {
     summary,
     siteSummary,
