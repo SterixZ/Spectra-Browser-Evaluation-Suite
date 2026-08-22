@@ -149,11 +149,11 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
 
       const navStart = performance.now();
       await page
-        .goto(url, { waitUntil: "domcontentloaded", timeout: 12000 })
+        .goto(url, { waitUntil: "domcontentloaded", timeout: 18000 })
         .catch(async () => {
-          await page.goto(url, { waitUntil: "commit", timeout: 8000 });
+          await page.goto(url, { waitUntil: "commit", timeout: 10000 });
         });
-      await page.waitForLoadState("load", { timeout: 4000 }).catch(() => {});
+      await page.waitForLoadState("load", { timeout: 6000 }).catch(() => {});
       const navElapsedSec = Math.max(0.1, (performance.now() - navStart) / 1000);
 
       const timing = await page.evaluate(() => {
@@ -188,8 +188,17 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
         const fcpEntry = paintList.find(p => p.name === "first-contentful-paint");
         const fcp = fcpEntry ? fcpEntry.startTime : 0;
 
+        let pageLoadMs = null;
+        if (nav) {
+          if (nav.loadEventEnd > 0) pageLoadMs = nav.loadEventEnd;
+          else if (nav.domComplete > 0) pageLoadMs = nav.domComplete;
+          else if (nav.domContentLoadedEventEnd > 0) pageLoadMs = nav.domContentLoadedEventEnd;
+          else if (nav.domInteractive > 0) pageLoadMs = nav.domInteractive;
+          else if (nav.responseEnd > 0) pageLoadMs = nav.responseEnd;
+        }
+
         return {
-          loadMs: nav ? nav.loadEventEnd : null,
+          loadMs: pageLoadMs,
           dns,
           tcp,
           tls,
@@ -208,7 +217,9 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       if (stats.peakCpu > peakRunCpuPercent) peakRunCpuPercent = stats.peakCpu;
       siteCpuAverages.push(stats.avgCpu);
 
-      const finalLoadMs = timing?.loadMs ?? (navElapsedSec * 1000);
+      const finalLoadMs = (timing?.loadMs != null && timing.loadMs > 0)
+        ? timing.loadMs
+        : (navElapsedSec * 1000);
       const totalBytes = Math.max(transferBytes, timing?.clientBytes || 0);
       const finalReqCount = Math.max(requestCount, timing?.clientCount || 1);
       const transferMB = Number((totalBytes / (1024 * 1024)).toFixed(2));
