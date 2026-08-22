@@ -254,23 +254,37 @@ function getBenchmarkData(resultsDir) {
     if (!isNaN(score) && score > 0) raw.speedometer[b].push(score);
   });
 
+  const rawSiteMetrics = {
+    pageload: {},
+    cpu: {},
+    memory: {},
+    network: {},
+    rate: {},
+  };
+
+  const pushSiteMetric = (type, site, b, val) => {
+    if (!site || !b || isNaN(val) || val <= 0) return;
+    rawSiteMetrics[type][site] ||= {};
+    rawSiteMetrics[type][site][b] ||= [];
+    rawSiteMetrics[type][site][b].push(val);
+  };
+
   pageloads.forEach((r) => {
     const b = r.Browser || r.browser;
     const t = Number(r["LoadTime(ms)"] || r.load_time_ms || r.LoadTimeMs);
     if (!b || isNaN(t) || t <= 0) return;
     init(b);
     raw.pageload[b].push(t);
-
     const site = r.Website || r.url || r.Url || r.SiteName || "unknown";
-    raw.pageloadBySite[site] ||= {};
-    raw.pageloadBySite[site][b] ||= [];
-    raw.pageloadBySite[site][b].push(t);
+    pushSiteMetric("pageload", site, b, t);
   });
 
   network.forEach((r) => {
     const b = r.Browser || r.browser;
     if (!b) return;
     init(b);
+
+    const site = r.Website || r.url || r.Url || r.SiteName || "unknown";
 
     const ttfb = Number(r["TTFB(ms)"] || r.TTFB_Ms || r.ttfb);
     if (!isNaN(ttfb) && ttfb > 0) raw.ttfb[b].push(ttfb);
@@ -279,13 +293,25 @@ function getBenchmarkData(resultsDir) {
     if (!isNaN(fcp) && fcp > 0) raw.fcp[b].push(fcp);
 
     const rate = Number(r["TransferRate(KB/s)"] || r.TransferRateKBs || r.rate);
-    if (!isNaN(rate) && rate > 0) raw.transferRate[b].push(rate);
+    if (!isNaN(rate) && rate > 0) {
+      raw.transferRate[b].push(rate);
+      pushSiteMetric("rate", site, b, rate);
+    }
 
     const dns = Number(r["DNS(ms)"] || r.DNS_Ms || r.dns);
     if (!isNaN(dns)) raw.dns[b].push(dns);
 
     const dl = Number(r["Download(ms)"] || r.Download_Ms || r.download);
     if (!isNaN(dl)) raw.download[b].push(dl);
+
+    const cpu = Number(r["PeakCPU(%)"] || r.PeakCpuPercent || r.cpu_percent);
+    if (!isNaN(cpu) && cpu > 0) pushSiteMetric("cpu", site, b, cpu);
+
+    const mem = Number(r["PeakMemory(MB)"] || r.PeakMemoryMB || r.memory_mb);
+    if (!isNaN(mem) && mem > 0) pushSiteMetric("memory", site, b, mem);
+
+    const netMb = Number(r["Transfer(MB)"] || r.TransferMB || (r.TransferBytes ? r.TransferBytes / 1048576 : 0));
+    if (!isNaN(netMb) && netMb > 0) pushSiteMetric("network", site, b, netMb);
   });
 
   // If standard metrics weren't present, populate from workload_raw
@@ -294,22 +320,27 @@ function getBenchmarkData(resultsDir) {
     if (!b) return;
     init(b);
 
+    const site = r.SiteName || r.url || r.Url || r.Website || "unknown";
+
     const startup = Number(r.StartupMs || r["Startup(ms)"] || r.startup_time_ms);
     if (!isNaN(startup) && startup > 0 && !raw.startup[b].length) raw.startup[b].push(startup);
 
     const cpu = Number(r.PeakCpuPercent || r.CpuPercent || r["CPU(%)"] || r["ActiveCPU(%)"] || r.cpu_percent);
-    if (!isNaN(cpu)) raw.cpu[b].push(cpu);
+    if (!isNaN(cpu)) {
+      raw.cpu[b].push(cpu);
+      pushSiteMetric("cpu", site, b, cpu);
+    }
 
     const mem = Number(r.PeakMemoryMB || r.MemoryMB || r["Memory(MB)"] || r["PeakMemory(MB)"] || r.memory_mb);
-    if (!isNaN(mem)) raw.memory[b].push(mem);
+    if (!isNaN(mem)) {
+      raw.memory[b].push(mem);
+      pushSiteMetric("memory", site, b, mem);
+    }
 
     const loadTime = Number(r.LoadTimeMs || r["LoadTime(ms)"] || r.load_time_ms);
-    if (!isNaN(loadTime) && loadTime > 0 && !pageloads.length) {
-      raw.pageload[b].push(loadTime);
-      const site = r.SiteName || r.url || r.Url || r.Website || "unknown";
-      raw.pageloadBySite[site] ||= {};
-      raw.pageloadBySite[site][b] ||= [];
-      raw.pageloadBySite[site][b].push(loadTime);
+    if (!isNaN(loadTime) && loadTime > 0) {
+      if (!pageloads.length) raw.pageload[b].push(loadTime);
+      if (!pageloads.length) pushSiteMetric("pageload", site, b, loadTime);
     }
 
     const ttfb = Number(r.TTFB_Ms || r["TTFB(ms)"]);
@@ -319,7 +350,13 @@ function getBenchmarkData(resultsDir) {
     if (!isNaN(fcp) && fcp > 0 && !raw.fcp[b].length) raw.fcp[b].push(fcp);
 
     const rate = Number(r.TransferRateKBs || r["TransferRate(KB/s)"]);
-    if (!isNaN(rate) && rate > 0 && !raw.transferRate[b].length) raw.transferRate[b].push(rate);
+    if (!isNaN(rate) && rate > 0) {
+      if (!raw.transferRate[b].length) raw.transferRate[b].push(rate);
+      pushSiteMetric("rate", site, b, rate);
+    }
+
+    const netMb = Number(r.TransferMB || r["Transfer(MB)"]);
+    if (!isNaN(netMb) && netMb > 0) pushSiteMetric("network", site, b, netMb);
   });
 
   const browsers = Array.from(
@@ -351,17 +388,28 @@ function getBenchmarkData(resultsDir) {
     cdf[b] = computeCdfData(raw.pageload[b]);
   });
 
-  const siteSummary = {};
-  for (const [site, bMap] of Object.entries(raw.pageloadBySite)) {
-    const hasData = Object.values(bMap).some((vals) => vals && vals.length > 0);
-    if (!hasData) continue;
-    siteSummary[site] = {};
-    for (const [b, vals] of Object.entries(bMap)) {
-      if (vals && vals.length > 0) {
-        siteSummary[site][b] = computeDescriptiveStats(vals);
+  const siteMetrics = {
+    pageload: {},
+    cpu: {},
+    memory: {},
+    network: {},
+    rate: {},
+  };
+
+  for (const type of Object.keys(rawSiteMetrics)) {
+    for (const [site, bMap] of Object.entries(rawSiteMetrics[type])) {
+      const hasData = Object.values(bMap).some((vals) => vals && vals.length > 0);
+      if (!hasData) continue;
+      siteMetrics[type][site] = {};
+      for (const [b, vals] of Object.entries(bMap)) {
+        if (vals && vals.length > 0) {
+          siteMetrics[type][site][b] = computeDescriptiveStats(vals);
+        }
       }
     }
   }
+
+  const siteSummary = siteMetrics.pageload;
 
   const anova = {
     startup: computeOneWayAnova(raw.startup),
@@ -395,6 +443,7 @@ function getBenchmarkData(resultsDir) {
   return {
     summary,
     siteSummary,
+    siteMetrics,
     cdf,
     anova,
     pairwise,
