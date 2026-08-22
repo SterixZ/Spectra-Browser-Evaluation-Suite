@@ -820,8 +820,8 @@
     // Standard benchmark canonical list (10 fast, reliable domains)
     "google", "github.com", "ycombinator", "wikipedia", "youtube", "reddit", "duckduckgo", "w3schools", "playwright", "w3",
     // Workload benchmark canonical list (5 Ultra-Light followed by 5 Heavy SPAs)
-    "example", "cern", "theproject", "npr", "duckduckgo", "httpbin", "hacker", "wikipedia", "w3c",
-    "youtube", "vscode", "verge", "reddit", "amazon", "unsplash"
+    "example", "cern", "theproject", "npr", "duckduckgo", "w3c", "w3.org",
+    "youtube", "vscode", "github", "reddit", "unsplash", "gdp"
   ];
 
   function getCanonicalSiteIndex(url) {
@@ -847,7 +847,8 @@
 
     // 2. Extreme Heavyweight Dynamic SPAs
     if (s.includes("youtube")) return "YouTube";
-    if (s.includes("vscode") || s.includes("vs code")) return "VS Code";
+    if (s.includes("vscode") || s.includes("vs code")) return "VS Code Hub";
+    if (s.includes("gdp") || s.includes("nominal")) return "Wiki GDP Table";
     if (s.includes("verge")) return "The Verge";
     if (s.includes("reddit")) return "Reddit";
     if (s.includes("amazon")) return "Amazon";

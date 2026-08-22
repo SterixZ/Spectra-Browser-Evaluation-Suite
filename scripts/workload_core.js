@@ -22,14 +22,14 @@ const WORKLOADS = {
     { name: "Example Domain", url: "https://example.com" },
     { name: "NPR Text Portal", url: "https://text.npr.org" },
     { name: "DuckDuckGo Lite", url: "https://lite.duckduckgo.com/lite/" },
-    { name: "HTTPBin HTML Spec", url: "https://httpbin.org/html" },
+    { name: "W3C Standards Spec", url: "https://www.w3.org/TR/PNG/" },
   ],
   Heavyweight: [
     { name: "YouTube Feed SPA", url: "https://www.youtube.com" },
-    { name: "The Verge Hub", url: "https://www.theverge.com" },
+    { name: "VS Code Web Hub", url: "https://github.com/microsoft/vscode" },
     { name: "Reddit Infinite Feed", url: "https://www.reddit.com" },
     { name: "Unsplash High-Res Grid", url: "https://unsplash.com" },
-    { name: "Amazon Product Catalog", url: "https://www.amazon.com" },
+    { name: "Wiki GDP Table", url: "https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)" },
   ],
 };
 
@@ -311,11 +311,11 @@ async function runWorkloadForBrowsers(targetNames = ["Chrome", "Edge", "Firefox"
             const startNav = performance.now();
 
             await page
-              .goto(site.url, { waitUntil: "domcontentloaded", timeout: 18000 })
+              .goto(site.url, { waitUntil: "domcontentloaded", timeout: 25000 })
               .catch(async () => {
-                await page.goto(site.url, { waitUntil: "commit", timeout: 10000 });
+                await page.goto(site.url, { waitUntil: "commit", timeout: 15000 });
               });
-            await page.waitForLoadState("load", { timeout: 6000 }).catch(() => {});
+            await page.waitForLoadState("load", { timeout: 8000 }).catch(() => {});
 
             const totalNavMs = performance.now() - startNav;
 
