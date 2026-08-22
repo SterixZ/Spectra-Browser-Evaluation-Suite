@@ -172,11 +172,8 @@
           </div>
           <div class="btn-group">
             <button class="tab-btn active" onclick="setChartMode('pageload', this)">Response Time by Website</button>
-            <button class="tab-btn" onclick="setChartMode('cpu', this)">CPU Utilization by Website</button>
-            <button class="tab-btn" onclick="setChartMode('memory', this)">Memory Footprint by Website</button>
-            <button class="tab-btn" onclick="setChartMode('network', this)">Network Payload by Website</button>
-            <button class="tab-btn" onclick="setChartMode('combined', this)">Combined System Resources</button>
             <button class="tab-btn" onclick="setChartMode('kiviat', this)">Kiviat Radar Graph</button>
+            <button class="tab-btn" onclick="setChartMode('combined', this)">Combined System Resources</button>
           </div>
         </div>
 
@@ -185,16 +182,10 @@
           <canvas id="benchmarkChart"></canvas>
         </div>
 
-        <!-- 2. Kiviat Multi-Dimensional Radar Graph (Raj Jain Ch. 10.4) -->
+        <!-- 2. Kiviat Multi-Dimensional Radar Graph -->
         <div id="chartContainerKiviat" style="display:none; flex-direction:column; gap:16px;">
-          <div style="height:460px; position:relative;">
+          <div style="height:500px; position:relative;">
             <canvas id="chartKiviat"></canvas>
-          </div>
-          <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 16px; font-size:12px; line-height:1.6; color:var(--muted);">
-            <strong style="color:var(--text);">Methodology Note (Raj K. Jain, Ch. 10.4):</strong>
-            A <strong>Kiviat Graph</strong> plots multi-dimensional metrics on normalized radial spokes (0–100% efficiency).
-            Each axis is oriented such that higher reach represents superior architectural performance.
-            The browser enclosing the largest, most balanced star-polygon provides the highest overall system efficiency.
           </div>
         </div>
 
@@ -894,41 +885,20 @@
       document.getElementById('chartTitle').innerText = 'Response Time across Websites (ms)';
       document.getElementById('chartSubtitle').innerText = 'Interactive comparison across 10 measured websites (Lower is better)';
       renderChart();
-    } else if (mode === 'cpu') {
-      pLoad.style.display = 'block';
-      pKiviat.style.display = 'none';
+    } else if (mode === 'kiviat') {
+      pLoad.style.display = 'none';
+      pKiviat.style.display = 'flex';
       pComb.style.display = 'none';
-      document.getElementById('chartTitle').innerText = 'Peak CPU Utilization across Websites (%)';
-      document.getElementById('chartSubtitle').innerText = 'Active navigation & rendering multi-core processor workload per website (Lower is better)';
-      renderChart();
-    } else if (mode === 'memory') {
-      pLoad.style.display = 'block';
-      pKiviat.style.display = 'none';
-      pComb.style.display = 'none';
-      document.getElementById('chartTitle').innerText = 'Memory Footprint across Websites (MB)';
-      document.getElementById('chartSubtitle').innerText = 'WorkingSet64 physical RAM allocated per website (Lower is better)';
-      renderChart();
-    } else if (mode === 'network') {
-      pLoad.style.display = 'block';
-      pKiviat.style.display = 'none';
-      pComb.style.display = 'none';
-      document.getElementById('chartTitle').innerText = 'Network Payload across Websites (MB)';
-      document.getElementById('chartSubtitle').innerText = 'Total transferred resource payload size downloaded per website';
-      renderChart();
-    } else if (mode === 'combined') {
+      document.getElementById('chartTitle').innerText = 'Kiviat Multi-Dimensional Performance Radar';
+      document.getElementById('chartSubtitle').innerText = 'Normalized radial balance across core performance vectors (0–100% efficiency score, larger polygon = superior balance)';
+      renderKiviatChart();
+    } else {
       pLoad.style.display = 'none';
       pKiviat.style.display = 'none';
       pComb.style.display = 'grid';
       document.getElementById('chartTitle').innerText = 'Combined System Resources (Startup Time / CPU / RAM)';
       document.getElementById('chartSubtitle').innerText = 'Multi-metric resource utilization and initialization latency comparison';
       renderCombinedResourceCharts();
-    } else if (mode === 'kiviat') {
-      pLoad.style.display = 'none';
-      pKiviat.style.display = 'flex';
-      pComb.style.display = 'none';
-      document.getElementById('chartTitle').innerText = 'Kiviat Multi-Dimensional Performance Radar (Raj Jain Ch. 10.4)';
-      document.getElementById('chartSubtitle').innerText = 'Normalized radial balance across 8 core vectors (0–100% efficiency score, larger polygon = superior balance)';
-      renderKiviatChart();
     }
   }
 
@@ -947,15 +917,13 @@
     if (!ctx) return;
     if (chartInstance) chartInstance.destroy();
 
-    const { summary, siteSummary, siteMetrics } = benchmarkData;
+    const { summary, siteSummary } = benchmarkData;
     const browsers = Object.keys(summary);
     const theme = getThemeColors();
 
-    const activeMetricMap = (siteMetrics && siteMetrics[chartMode]) ? siteMetrics[chartMode] : siteSummary;
-
     // Deduplicate and merge by clean label
     const labelMap = {};
-    for (const [site, bMap] of Object.entries(activeMetricMap)) {
+    for (const [site, bMap] of Object.entries(siteSummary)) {
       const label = cleanSiteLabel(site);
       labelMap[label] ||= { originalSite: site, bMap: {} };
       for (const [b, stat] of Object.entries(bMap)) {
@@ -969,29 +937,11 @@
       return getCanonicalSiteIndex(labelMap[a].originalSite) - getCanonicalSiteIndex(labelMap[b].originalSite);
     });
 
-    let yAxisTitle = 'Response Time (ms)';
-    let unit = 'ms';
-    let decimals = 0;
-
-    if (chartMode === 'cpu') {
-      yAxisTitle = 'Peak CPU (%)';
-      unit = '%';
-      decimals = 2;
-    } else if (chartMode === 'memory') {
-      yAxisTitle = 'Peak RAM (MB)';
-      unit = 'MB';
-      decimals = 1;
-    } else if (chartMode === 'network') {
-      yAxisTitle = 'Transferred Payload (MB)';
-      unit = 'MB';
-      decimals = 2;
-    }
-
     const datasets = browsers.map(b => {
       const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.7)', border: '#888' };
       const series = uniqueLabels.map(label => {
         const stat = labelMap[label].bMap[b];
-        return stat ? Number(stat.mean.toFixed(decimals)) : 0;
+        return stat ? Number(stat.mean.toFixed(0)) : 0;
       });
 
       return {
@@ -1025,7 +975,7 @@
         scales: {
           y: {
             beginAtZero: true,
-            title: { display: true, text: yAxisTitle, color: theme.text },
+            title: { display: true, text: 'Response Time (ms)', color: theme.text },
             ticks: { color: theme.text, font: { family: 'JetBrains Mono', size: 12 } },
             grid: { color: theme.grid },
           },
@@ -1051,7 +1001,7 @@
                 const rawLabel = items[0].label;
                 return Array.isArray(rawLabel) ? rawLabel.join(' ') : rawLabel;
               },
-              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ${unit}`
+              label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ms`
             }
           }
         }
@@ -1087,14 +1037,14 @@
     const minInflation = Object.keys(workloadMap).length ? Math.min(...Object.values(workloadMap)) : 1;
 
     const labels = [
-      'Startup Responsiveness',
-      'CPU Economy',
-      'RAM Economy',
-      'Response Velocity',
+      'Startup Time',
+      'CPU Efficiency',
+      'RAM Efficiency',
+      'Response Time',
       'Reaction Time (TTFB)',
-      'Render Immediacy (FCP)',
-      'Execution Velocity (Speedometer)',
-      'Workload Resilience (1/Inflation)',
+      'First Contentful Paint (FCP)',
+      'Execution Speed',
+      'Workload Resilience',
     ];
 
     const datasets = browsers.map(b => {
