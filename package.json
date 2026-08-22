@@ -5,6 +5,10 @@
   "main": "index.js",
   "scripts": {
     "bench": "node scripts/runner.js",
+    "bench:all": "node scripts/full_benchmark.js",
+    "bench:chrome": "node scripts/bench_chrome.js",
+    "bench:edge": "node scripts/bench_edge.js",
+    "bench:firefox": "node scripts/bench_firefox.js",
     "bench:workloads": "node scripts/workload_benchmark.js",
     "analyze": "node scripts/analyze.js",
     "dashboard": "node dashboard/server.js",

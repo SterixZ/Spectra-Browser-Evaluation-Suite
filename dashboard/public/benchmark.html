@@ -817,8 +817,8 @@
   }
 
   const CANONICAL_ORDER = [
-    // Standard benchmark canonical list (10 reliable domains)
-    "google", "github.com", "ycombinator", "wikipedia", "youtube", "reddit", "amazon", "bbc", "playwright", "w3",
+    // Standard benchmark canonical list (10 fast, reliable domains)
+    "google", "github.com", "ycombinator", "wikipedia", "youtube", "reddit", "duckduckgo", "w3schools", "playwright", "w3",
     // Workload benchmark canonical list (5 Ultra-Light followed by 5 Heavy SPAs)
     "example", "cern", "theproject", "npr", "duckduckgo", "httpbin", "hacker", "wikipedia", "w3c",
     "youtube", "vscode", "verge", "reddit", "amazon", "unsplash"
@@ -839,7 +839,8 @@
     if (s.includes("example")) return "Example";
     if (s.includes("cern") || s.includes("theproject")) return "CERN WWW";
     if (s.includes("npr")) return "NPR Text";
-    if (s.includes("duckduckgo") || s.includes("ddg")) return "DDG Lite";
+    if (s.includes("duckduckgo") || s.includes("ddg")) return "DuckDuckGo";
+    if (s.includes("w3schools")) return "W3Schools";
     if (s.includes("httpbin")) return "HTTPBin";
     if (s.includes("ycombinator") || s.includes("hacker")) return "HackerNews";
     if (s.includes("w3.org") || s.includes("w3c") || s.includes("w3")) return "W3C Standards";
