@@ -241,7 +241,9 @@
                 <th>Lightweight Peak RAM</th>
                 <th>Heavyweight Peak RAM</th>
                 <th>RAM Inflation Multiplier</th>
+                <th>Light Peak CPU</th>
                 <th>Heavy Peak CPU</th>
+                <th>CPU Overhead Ratio</th>
                 <th>Overhead Verdict</th>
               </tr>
             </thead>
@@ -729,7 +731,9 @@
 
       const lightRam = row.Light_PeakRAM_MB || row.Light_MeanRAM_MB || '—';
       const heavyRam = row.Heavy_PeakRAM_MB || row.Heavy_MeanRAM_MB || '—';
-      const heavyCpu = row.Heavy_PeakCPU || row.Heavy_MeanCPU || '—';
+      const lightCpu = parseFloat(row.Light_PeakCPU || row.Light_MeanCPU) || 0;
+      const heavyCpu = parseFloat(row.Heavy_PeakCPU || row.Heavy_MeanCPU) || 0;
+      const cpuRatio = row.CPU_InflationRatio || (lightCpu > 0 ? (heavyCpu / lightCpu).toFixed(2) + 'x' : '—');
 
       return `
         <tr>
@@ -740,7 +744,9 @@
           <td class="mono">${lightRam} MB</td>
           <td class="mono">${heavyRam} MB</td>
           <td><strong style="color:var(--text); font-family:var(--font-mono);">${row.RAM_InflationRatio}</strong></td>
-          <td class="mono">${heavyCpu}%</td>
+          <td class="mono">${lightCpu ? lightCpu.toFixed(2) + '%' : '—'}</td>
+          <td class="mono">${heavyCpu ? heavyCpu.toFixed(2) + '%' : '—'}</td>
+          <td><strong style="color:var(--text); font-family:var(--font-mono);">${cpuRatio}</strong></td>
           <td>${verdict}</td>
         </tr>
       `;
