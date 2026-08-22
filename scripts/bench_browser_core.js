@@ -172,7 +172,17 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
         const tcp = nav ? Math.max(0, nav.connectEnd - nav.connectStart) : 0;
         const tls = nav && nav.secureConnectionStart > 0 ? Math.max(0, nav.connectEnd - nav.secureConnectionStart) : 0;
         const ttfb = nav ? Math.max(0, nav.responseStart - nav.requestStart) : 0;
-        const download = nav ? Math.max(0, nav.responseEnd - nav.responseStart) : 0;
+        
+        let download = nav ? Math.max(0, nav.responseEnd - nav.responseStart) : 0;
+        if (download === 0 && resList && resList.length > 0) {
+          const resDiffs = resList.map(r => r.responseEnd - r.responseStart).filter(d => d > 0);
+          if (resDiffs.length > 0) {
+            download = resDiffs.reduce((a, b) => a + b, 0) / resDiffs.length;
+          } else if (nav && nav.domInteractive > nav.responseStart) {
+            download = nav.domInteractive - nav.responseStart;
+          }
+        }
+
         const domInteractive = nav ? nav.domInteractive : 0;
         const domComplete = nav ? nav.domComplete : 0;
         const fcpEntry = paintList.find(p => p.name === "first-contentful-paint");
