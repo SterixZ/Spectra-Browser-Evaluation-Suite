@@ -5,13 +5,14 @@ const CHROMIUM_ARGS = [
   "--no-first-run",
   "--no-default-browser-check",
   "--disable-background-mode",
-  "--disable-features=msEdgeStartupBoost,msHubEdgeSidebar,msEdgeFre,msSmartScreenProtection",
+  "--disable-features=msEdgeStartupBoost,msHubEdgeSidebar,msEdgeFre,msSmartScreenProtection,msSmartScreenPua,msEdgeTrackingPrevention",
   "--disable-backgrounding-occluded-windows",
   "--disable-renderer-backgrounding",
   "--disable-breakpad",
   "--disable-component-update",
   "--disable-extensions",
   "--disable-sync",
+  "--ignore-certificate-errors",
 ];
 
 const FIREFOX_ARGS = [

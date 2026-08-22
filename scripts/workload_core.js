@@ -259,6 +259,16 @@ async function runWorkloadForBrowsers(targetNames = ["Chrome", "Edge", "Firefox"
     });
   };
 
+  const allLaunchers = getLaunchers();
+  const selectedLaunchers = allLaunchers.filter((b) =>
+    targetNames.map((t) => t.toLowerCase()).includes(b.name.toLowerCase())
+  );
+
+  if (!selectedLaunchers.length) {
+    console.error(`No matching browsers found for: ${targetNames.join(", ")}`);
+    process.exit(1);
+  }
+
   for (const browserInfo of selectedLaunchers) {
     console.log(`\n========================================================================`);
     console.log(`🧪 WORKLOAD BENCHMARK: ${browserInfo.name.toUpperCase()}`);

@@ -384,12 +384,15 @@ async function runBenchmarkForBrowsers(targetNames = ["Chrome", "Edge", "Firefox
   const speedometerCsv = readOrInit(speedometerPath, "Browser,Run,Score");
   const networkCsv = readOrInit(networkPath, "Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms),PeakCPU(%),PeakMemory(MB)");
 
-  const filterOutBrowser = (csvObj, browserName) => {
-    csvObj.rows = csvObj.rows.filter((line, idx) => {
-      if (idx === 0) return true; // keep header
-      return !line.toLowerCase().startsWith(browserName.toLowerCase() + ",");
-    });
-  };
+  const allLaunchers = getLaunchers();
+  const selectedLaunchers = allLaunchers.filter((b) =>
+    targetNames.map((t) => t.toLowerCase()).includes(b.name.toLowerCase())
+  );
+
+  if (!selectedLaunchers.length) {
+    console.error(`No matching browsers found for: ${targetNames.join(", ")}`);
+    process.exit(1);
+  }
 
   for (const browserInfo of selectedLaunchers) {
     console.log(`\n======================================================`);
