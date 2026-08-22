@@ -166,10 +166,22 @@ async function runSpeedometer(browserInfo, runNumber) {
     const page = await browser.newPage();
     page.setDefaultTimeout(600000);
 
-    await page.goto(SPEEDOMETER_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForSelector(".start-tests-button", { timeout: 30000 });
+    await page.goto(SPEEDOMETER_URL, { waitUntil: "domcontentloaded", timeout: 45000 });
+    
+    const startBtn = page.locator(".start-tests-button, button#start-tests, button:has-text('Start Test')").first();
+    await startBtn.waitFor({ state: "attached", timeout: 45000 });
     await sleep(1000);
-    await page.click(".start-tests-button");
+
+    try {
+      await startBtn.click({ force: true, timeout: 10000 });
+    } catch {
+      await page.evaluate(() => {
+        const btn = document.querySelector(".start-tests-button, button#start-tests, button");
+        if (btn) btn.click();
+      });
+    }
+
+    console.log(`  Speedometer started for ${browserInfo.name}, running tests...`);
 
     await page.waitForFunction(
       () => {
