@@ -394,6 +394,13 @@ async function runBenchmarkForBrowsers(targetNames = ["Chrome", "Edge", "Firefox
     process.exit(1);
   }
 
+  const filterOutBrowser = (csvObj, browserName) => {
+    csvObj.rows = csvObj.rows.filter((line, idx) => {
+      if (idx === 0) return true; // keep header
+      return !line.toLowerCase().startsWith(browserName.toLowerCase() + ",");
+    });
+  };
+
   for (const browserInfo of selectedLaunchers) {
     console.log(`\n======================================================`);
     console.log(`🚀 EVALUATING BROWSER: ${browserInfo.name.toUpperCase()}`);
