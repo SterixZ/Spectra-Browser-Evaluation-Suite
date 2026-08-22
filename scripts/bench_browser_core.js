@@ -384,20 +384,23 @@ async function runBenchmarkForBrowsers(targetNames = ["Chrome", "Edge", "Firefox
   const speedometerCsv = readOrInit(speedometerPath, "Browser,Run,Score");
   const networkCsv = readOrInit(networkPath, "Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms),PeakCPU(%),PeakMemory(MB)");
 
-  const allLaunchers = getLaunchers();
-  const selectedLaunchers = allLaunchers.filter(b => 
-    targetNames.map(t => t.toLowerCase()).includes(b.name.toLowerCase())
-  );
-
-  if (!selectedLaunchers.length) {
-    console.error(`No matching browsers found for: ${targetNames.join(", ")}`);
-    process.exit(1);
-  }
+  const filterOutBrowser = (csvObj, browserName) => {
+    csvObj.rows = csvObj.rows.filter((line, idx) => {
+      if (idx === 0) return true; // keep header
+      return !line.toLowerCase().startsWith(browserName.toLowerCase() + ",");
+    });
+  };
 
   for (const browserInfo of selectedLaunchers) {
     console.log(`\n======================================================`);
     console.log(`🚀 EVALUATING BROWSER: ${browserInfo.name.toUpperCase()}`);
     console.log(`======================================================`);
+
+    // Clean previous rows for this specific browser if re-running
+    filterOutBrowser(metricsCsv, browserInfo.name);
+    filterOutBrowser(pageloadCsv, browserInfo.name);
+    filterOutBrowser(speedometerCsv, browserInfo.name);
+    filterOutBrowser(networkCsv, browserInfo.name);
 
     for (let run = 1; run <= RUNS; run++) {
       console.log(`\n[${browserInfo.name}] Run ${run}/${RUNS}`);

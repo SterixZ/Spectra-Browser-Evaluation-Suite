@@ -252,16 +252,25 @@ async function runWorkloadForBrowsers(targetNames = ["Chrome", "Edge", "Firefox"
   const speedometerCsv = readOrInit(speedometerPath, "browser,run,score");
   const networkCsv = readOrInit(networkPath, "Browser,Run,Category,SiteName,Url,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms)");
 
-  const allLaunchers = getLaunchers();
-  const selectedLaunchers = allLaunchers.filter((b) =>
-    targetNames.map((t) => t.toLowerCase()).includes(b.name.toLowerCase())
-  );
+  const filterOutBrowser = (csvObj, browserName) => {
+    csvObj.rows = csvObj.rows.filter((line, idx) => {
+      if (idx === 0) return true; // keep header
+      return !line.toLowerCase().startsWith(browserName.toLowerCase() + ",");
+    });
+  };
 
   for (const browserInfo of selectedLaunchers) {
     console.log(`\n========================================================================`);
     console.log(`🧪 WORKLOAD BENCHMARK: ${browserInfo.name.toUpperCase()}`);
     console.log(`   5 Ultra-Light vs. 5 Extreme-Heavy × ${ITERATIONS} Iterations`);
     console.log(`========================================================================\n`);
+
+    // Clean previous rows for this specific browser if re-running
+    filterOutBrowser(rawCsv, browserInfo.name);
+    filterOutBrowser(metricsCsv, browserInfo.name);
+    filterOutBrowser(pageloadCsv, browserInfo.name);
+    filterOutBrowser(speedometerCsv, browserInfo.name);
+    filterOutBrowser(networkCsv, browserInfo.name);
 
     for (let iter = 1; iter <= ITERATIONS; iter++) {
       console.log(`\n  [${browserInfo.name}] Iteration ${iter}/${ITERATIONS}`);
