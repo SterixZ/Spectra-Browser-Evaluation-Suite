@@ -143,17 +143,17 @@
           <div class="mini-compare-list" id="memCompareList"></div>
         </div>
 
-        <!-- 4. Reaction Time -->
+        <!-- 4. Reaction Time / Execution Speed -->
         <div class="kpi-card">
           <div class="kpi-card-header">
-            <span class="kpi-label">Reaction Time</span>
-            <span class="kpi-badge win" id="speedWinnerBadge">Top: Firefox</span>
+            <span class="kpi-label" id="speedLabel">Reaction Time</span>
+            <span class="kpi-badge win" id="speedWinnerBadge">Top: Chrome</span>
           </div>
           <div class="kpi-value-row">
             <div class="kpi-main-number" id="speedMainVal">—</div>
-            <div class="kpi-unit">pts</div>
+            <div class="kpi-unit" id="speedUnit">ms</div>
           </div>
-          <div class="kpi-subtext" id="speedSubtext">Speedometer 3.0 UI reaction & interaction score</div>
+          <div class="kpi-subtext" id="speedSubtext">Time to First Byte (TTFB) server reaction</div>
           <div class="mini-compare-list" id="speedCompareList"></div>
         </div>
 
@@ -262,7 +262,8 @@
                 <th>RAM Usage</th>
                 <th>Avg Response Time</th>
                 <th>Response Time (P90)</th>
-                <th>Reaction Time</th>
+                <th>Reaction Time (TTFB)</th>
+                <th>Speedometer 3.0</th>
                 <th>Overall Rank</th>
               </tr>
             </thead>
@@ -586,13 +587,28 @@
     document.getElementById("memMainVal").innerText = m.mean.toFixed(0);
     document.getElementById("memCompareList").innerHTML = buildMiniCompare('memory', 'MB');
 
-    // 4. Speedometer Responsiveness
-    const bestSpeed = [...browsers].sort((a,b) => summary[b].speedometer.geoMean - summary[a].speedometer.geoMean)[0];
-    const sp = summary[bestSpeed].speedometer;
-    if (sp && sp.n > 0) {
+    // 4. Execution Speed (Speedometer) or Reaction Time (TTFB)
+    const hasSpeedometer = browsers.some(b => summary[b]?.speedometer?.n > 0);
+    const hasTtfb = browsers.some(b => summary[b]?.ttfb?.n > 0);
+
+    if (hasSpeedometer) {
+      const bestSpeed = [...browsers].sort((a,b) => (summary[b].speedometer.geoMean || summary[b].speedometer.mean) - (summary[a].speedometer.geoMean || summary[a].speedometer.mean))[0];
+      const sp = summary[bestSpeed].speedometer;
+      document.getElementById("speedLabel").innerText = "Execution Speed";
+      document.getElementById("speedUnit").innerText = "pts";
+      document.getElementById("speedSubtext").innerText = "Speedometer 3.0 composite benchmark score";
       document.getElementById("speedWinnerBadge").innerText = `Top: ${bestSpeed}`;
-      document.getElementById("speedMainVal").innerText = sp.geoMean.toFixed(1);
+      document.getElementById("speedMainVal").innerText = sp.geoMean ? sp.geoMean.toFixed(1) : sp.mean.toFixed(1);
       document.getElementById("speedCompareList").innerHTML = buildMiniCompare('speedometer', 'pts', true);
+    } else if (hasTtfb) {
+      const bestTtfb = [...browsers].sort((a,b) => summary[a].ttfb.mean - summary[b].ttfb.mean)[0];
+      const t = summary[bestTtfb].ttfb;
+      document.getElementById("speedLabel").innerText = "Reaction Time";
+      document.getElementById("speedUnit").innerText = "ms";
+      document.getElementById("speedSubtext").innerText = "Time to First Byte (TTFB) server reaction";
+      document.getElementById("speedWinnerBadge").innerText = `Fastest: ${bestTtfb}`;
+      document.getElementById("speedMainVal").innerText = t.mean.toFixed(0);
+      document.getElementById("speedCompareList").innerHTML = buildMiniCompare('ttfb', 'ms', false);
     } else {
       document.getElementById("speedMainVal").innerText = "—";
       document.getElementById("speedCompareList").innerHTML = "<div class='muted' style='font-size:12px;'>No benchmark data</div>";
@@ -618,7 +634,8 @@
 
     tbody.innerHTML = ranked.map((b, idx) => {
       const s = summary[b];
-      const speedStr = s.speedometer?.n > 0 ? `${s.speedometer.geoMean.toFixed(1)} pts` : '—';
+      const ttfbStr = s.ttfb?.n > 0 ? `${s.ttfb.mean.toFixed(0)} ms` : '—';
+      const speedStr = s.speedometer?.n > 0 ? `${(s.speedometer.geoMean || s.speedometer.mean).toFixed(1)} pts` : '—';
       const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
       const rankBadge = idx === 0
         ? `<span class="pill-tag pill-green">Rank #1</span>`
@@ -632,6 +649,7 @@
           <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
           <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
           <td class="mono">${p90Str}</td>
+          <td class="mono">${ttfbStr}</td>
           <td class="mono">${speedStr}</td>
           <td>${rankBadge}</td>
         </tr>
