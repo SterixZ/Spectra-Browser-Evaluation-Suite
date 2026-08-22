@@ -960,9 +960,21 @@
       };
     });
 
+    // Format into 1 or 2 lines for perfect horizontal centering directly under each bar group
+    const formattedLabels = uniqueLabels.map(label => {
+      if (label === "VS Code Hub") return ["VS Code", "Hub"];
+      if (label === "Wiki GDP Table") return ["Wiki GDP", "Table"];
+      if (label === "W3C Standards") return ["W3C", "Standards"];
+      if (label === "CERN WWW") return ["CERN", "WWW"];
+      if (label === "NPR Text") return ["NPR", "Text"];
+      if (label === "DuckDuckGo") return "DuckDuckGo";
+      if (label.includes(" ")) return label.split(" ");
+      return label;
+    });
+
     chartInstance = new Chart(ctx, {
       type: 'bar',
-      data: { labels: uniqueLabels, datasets },
+      data: { labels: formattedLabels, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -974,21 +986,27 @@
             grid: { color: theme.grid },
           },
           x: {
+            grid: { display: false },
             ticks: {
               color: theme.text,
-              font: { family: 'Inter', weight: 600, size: 12 },
-              maxRotation: 25,
+              font: { family: 'Inter', weight: 600, size: 11.5 },
+              align: 'center',
+              maxRotation: 0,
               minRotation: 0,
               autoSkip: false,
-              padding: 10,
+              padding: 8,
             },
-            grid: { display: false },
           }
         },
         plugins: {
           legend: { labels: { color: theme.text, font: { family: 'Inter', weight: 600, size: 13 } } },
           tooltip: {
             callbacks: {
+              title: (items) => {
+                if (!items.length) return '';
+                const rawLabel = items[0].label;
+                return Array.isArray(rawLabel) ? rawLabel.join(' ') : rawLabel;
+              },
               label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} ms`
             }
           }
