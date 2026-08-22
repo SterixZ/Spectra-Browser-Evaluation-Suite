@@ -989,11 +989,13 @@
     if (!browsers.length) return;
     const theme = getThemeColors();
 
-    const minStartup = Math.min(...browsers.map(b => summary[b].startup.mean).filter(v => v > 0)) || 1;
-    const minCpu = Math.min(...browsers.map(b => summary[b].cpu.mean).filter(v => v > 0)) || 1;
-    const minMem = Math.min(...browsers.map(b => summary[b].memory.mean).filter(v => v > 0)) || 1;
-    const minLoad = Math.min(...browsers.map(b => summary[b].pageload.mean).filter(v => v > 0)) || 1;
-    const maxSpeed = Math.max(...browsers.map(b => summary[b].speedometer?.geoMean || summary[b].speedometer?.mean || 0)) || 1;
+    const minStartup = Math.min(...browsers.map(b => summary[b]?.startup?.mean).filter(v => v > 0)) || 1;
+    const minCpu = Math.min(...browsers.map(b => summary[b]?.cpu?.mean).filter(v => v > 0)) || 1;
+    const minMem = Math.min(...browsers.map(b => summary[b]?.memory?.mean).filter(v => v > 0)) || 1;
+    const minLoad = Math.min(...browsers.map(b => summary[b]?.pageload?.mean).filter(v => v > 0)) || 1;
+    const minTtfb = Math.min(...browsers.map(b => summary[b]?.ttfb?.mean).filter(v => v > 0)) || 1;
+    const minFcp = Math.min(...browsers.map(b => summary[b]?.fcp?.mean).filter(v => v > 0)) || 1;
+    const maxSpeed = Math.max(...browsers.map(b => summary[b]?.speedometer?.geoMean || summary[b]?.speedometer?.mean || 0)) || 1;
 
     let workloadMap = {};
     if (workloads && workloads.comparison) {
@@ -1004,28 +1006,32 @@
     const minInflation = Object.keys(workloadMap).length ? Math.min(...Object.values(workloadMap)) : 1;
 
     const labels = [
-      'Startup Time',
-      'CPU Efficiency',
-      'Memory Efficiency',
-      'Response Time',
-      'Reaction Time',
-      'Workload Resilience',
+      'Startup Responsiveness',
+      'CPU Economy',
+      'RAM Economy',
+      'Response Velocity',
+      'Reaction Time (TTFB)',
+      'Render Immediacy (FCP)',
+      'Execution Velocity (Speedometer)',
+      'Workload Resilience (1/Inflation)',
     ];
 
     const datasets = browsers.map(b => {
       const s = summary[b];
       const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.25)', border: '#888' };
 
-      const scoreStartup = s.startup.mean > 0 ? Math.min(100, (minStartup / s.startup.mean) * 100) : 50;
-      const scoreCpu = s.cpu.mean > 0 ? Math.min(100, (minCpu / s.cpu.mean) * 100) : 50;
-      const scoreMem = s.memory.mean > 0 ? Math.min(100, (minMem / s.memory.mean) * 100) : 50;
-      const scoreLoad = s.pageload.mean > 0 ? Math.min(100, (minLoad / s.pageload.mean) * 100) : 50;
+      const scoreStartup = s.startup?.mean > 0 ? Math.min(100, (minStartup / s.startup.mean) * 100) : 60;
+      const scoreCpu = s.cpu?.mean > 0 ? Math.min(100, (minCpu / s.cpu.mean) * 100) : 60;
+      const scoreMem = s.memory?.mean > 0 ? Math.min(100, (minMem / s.memory.mean) * 100) : 60;
+      const scoreLoad = s.pageload?.mean > 0 ? Math.min(100, (minLoad / s.pageload.mean) * 100) : 60;
+      const scoreTtfb = s.ttfb?.mean > 0 ? Math.min(100, (minTtfb / s.ttfb.mean) * 100) : 70;
+      const scoreFcp = s.fcp?.mean > 0 ? Math.min(100, (minFcp / s.fcp.mean) * 100) : 70;
       
       const sp = s.speedometer?.geoMean || s.speedometer?.mean || 0;
-      const scoreSpeed = sp > 0 ? Math.min(100, (sp / maxSpeed) * 100) : 80;
+      const scoreSpeed = sp > 0 ? Math.min(100, (sp / maxSpeed) * 100) : 75;
 
       const infl = workloadMap[b];
-      const scoreResilience = infl ? Math.min(100, (minInflation / infl) * 100) : 85;
+      const scoreResilience = infl ? Math.min(100, (minInflation / infl) * 100) : 80;
 
       return {
         label: b,
@@ -1034,6 +1040,8 @@
           Number(scoreCpu.toFixed(1)),
           Number(scoreMem.toFixed(1)),
           Number(scoreLoad.toFixed(1)),
+          Number(scoreTtfb.toFixed(1)),
+          Number(scoreFcp.toFixed(1)),
           Number(scoreSpeed.toFixed(1)),
           Number(scoreResilience.toFixed(1)),
         ],

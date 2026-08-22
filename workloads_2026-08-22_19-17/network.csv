@@ -1,0 +1,91 @@
+Browser,Run,Category,SiteName,Url,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms)
+Edge,1,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",2,2517,0,2.4,443.1,380.7,193.3,187.5,0.9,0.0
+Edge,1,Lightweight,"Example Domain","https://example.com",1,618,0,2.2,44.9,143.0,77.2,69.2,0.9,320.0
+Edge,1,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,0.4,3344.4,3546.1,116.3,291.3,0.7,7288.0
+Edge,1,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",3,1250,0,0.9,296.3,432.9,167.6,115.6,1.2,1348.0
+Edge,1,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,54.3,0.0,0.0,0.0,224.1,324.0,4712.0
+Edge,1,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",51,3386195,3.23,321.2,0.0,0.0,0.0,251.2,182.2,7824.0
+Edge,1,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",160,2268125,2.16,185.4,2928.5,3709.8,3214.7,1074.6,61.9,10384.0
+Edge,1,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",14,1577623,1.5,66.5,94.8,20359.5,135.3,94.9,384.9,21104.0
+Edge,1,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",48,1165815,1.11,658,1281.6,80.2,44.2,280.7,51.9,1736.0
+Edge,1,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",35,475532,0.45,107.7,136.4,3394.0,2647.3,91.7,378.8,4216.0
+Edge,2,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",2,2517,0,2.4,423.8,396.2,203.1,192.2,0.9,0.0
+Edge,2,Lightweight,"Example Domain","https://example.com",1,618,0,0.6,511.5,289.2,123.6,202.7,1.2,0.0
+Edge,2,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,0.3,4249.8,3759.4,216.0,1264.3,0.7,0.0
+Edge,2,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",2,1250,0,1.5,185.4,104.1,57.9,143.1,0.8,852.0
+Edge,2,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,96.2,0.0,0.0,0.0,267.2,222.9,1732.0
+Edge,2,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",128,3388847,3.23,661.8,0.0,0.0,0.0,476.4,168.4,2672.0
+Edge,2,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",137,1940702,1.85,323.3,3609.5,198.1,99.0,991.8,118.8,5632.0
+Edge,2,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",9,891521,0.85,267.3,49.8,137.5,77.1,205.2,273.9,1720.0
+Edge,2,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",51,1206769,1.15,408.6,1070.6,271.6,88.9,575.8,80.0,2036.0
+Edge,2,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",49,510749,0.49,759.4,50.6,86.1,46.3,42.3,86.1,484.0
+Edge,3,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",3,2517,0,0.3,0.0,1110.0,0.0,3065.2,0.4,7256.0
+Edge,3,Lightweight,"Example Domain","https://example.com",1,618,0,0.3,511.7,879.1,308.8,367.9,1.4,0.0
+Edge,3,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,0.4,259.6,3391.3,3343.9,3515.4,0.8,7272.0
+Edge,3,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",3,1250,0,4.4,48.4,67.7,35.1,53.4,1.9,324.0
+Edge,3,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,27.2,0.0,0.0,0.0,136.8,260.3,9696.0
+Edge,3,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",51,3387182,3.23,345.1,0.0,0.0,0.0,2333.9,326.9,6320.0
+Edge,3,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",137,1940696,1.85,208.9,128.3,4094.4,3424.6,1172.5,266.6,7204.0
+Edge,3,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",81,3039151,2.9,823.9,0.0,0.0,0.0,440.7,407.3,1316.0
+Edge,3,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",36,1081567,1.03,804.7,61.7,312.0,254.8,313.6,96.3,808.0
+Edge,3,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",49,510749,0.49,22.7,4843.5,942.3,190.9,349.6,4952.9,18984.0
+Chrome,1,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",2,2517,0,1.5,61.3,1373.8,1183.7,172.9,0.6,0.0
+Chrome,1,Lightweight,"Example Domain","https://example.com",1,618,0,0.5,784.5,314.6,203.1,113.5,0.3,1268.0
+Chrome,1,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,4.5,59.6,466.1,233.3,63.8,1.3,692.0
+Chrome,1,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",2,1250,0,1.2,227.2,262.9,37.7,94.6,0.8,0.0
+Chrome,1,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,71.5,0.0,0.0,0.0,200.5,1023.8,1632.0
+Chrome,1,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",136,3436236,3.28,897.1,0.0,0.0,0.0,174.1,631.8,1992.0
+Chrome,1,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",163,2272990,2.17,83.9,54.5,104.8,54.3,2801.4,9470.2,20552.0
+Chrome,1,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",10,1211455,1.16,49.2,171.0,17345.2,77.9,3419.0,679.6,21824.0
+Chrome,1,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",32,1108608,1.06,205.5,585.6,2858.9,45.0,279.4,57.7,3836.0
+Chrome,1,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",51,511049,0.49,446.3,178.3,131.4,94.7,39.7,240.7,844.0
+Chrome,2,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",2,2517,0,4.1,57.7,352.0,179.6,174.2,0.5,656.0
+Chrome,2,Lightweight,"Example Domain","https://example.com",1,618,0,0.9,184.1,338.8,145.4,137.2,1.1,696.0
+Chrome,2,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,2.9,724.8,161.2,102.5,44.8,0.7,0.0
+Chrome,2,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",2,1250,0,1.3,46.2,255.9,211.1,416.5,0.9,0.0
+Chrome,2,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,60.8,0.0,0.0,0.0,85.5,3486.6,2032.0
+Chrome,2,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",129,3451435,3.29,1138.5,0.0,0.0,0.0,162.7,382.3,944.0
+Chrome,2,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",139,1943276,1.85,112.4,87.7,686.4,640.5,1157.1,1083.5,9012.0
+Chrome,2,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",9,891521,0.85,371.3,66.5,119.0,61.5,57.7,123.7,668.0
+Chrome,2,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",50,1163944,1.11,544.4,693.2,346.6,149.2,869.4,154.6,2056.0
+Chrome,2,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",50,511049,0.49,402.3,66.2,340.0,104.9,101.4,317.1,1148.0
+Chrome,3,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",2,2517,0,2.5,378.5,386.7,195.9,189.9,0.8,0.0
+Chrome,3,Lightweight,"Example Domain","https://example.com",1,618,0,2.1,53.5,145.6,82.0,69.5,1.0,324.0
+Chrome,3,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,0.4,4152.7,2345.8,82.1,127.6,1.3,0.0
+Chrome,3,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",2,1250,0,1.4,111.0,128.5,69.6,503.4,0.8,0.0
+Chrome,3,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,11.5,0.0,0.0,0.0,148.5,180.2,23392.0
+Chrome,3,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",129,3390668,3.23,974.4,0.0,0.0,0.0,155.2,446.3,1120.0
+Chrome,3,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",131,1830691,1.75,80.5,48.6,161.3,62.0,650.7,1446.2,9216.0
+Chrome,3,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",11,1211455,1.16,53.5,207.0,19669.1,44.0,36.9,100.8,20284.0
+Chrome,3,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",28,898146,0.86,107.4,3595.9,3915.7,3239.0,300.9,329.2,8100.0
+Chrome,3,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",35,475532,0.45,475.3,62.9,247.0,170.5,52.7,148.5,776.0
+Firefox,1,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",2,4223,0,9.4,65.0,173.0,0.0,184.0,1.0,449.0
+Firefox,1,Lightweight,"Example Domain","https://example.com",1,618,0,0.1,2409.0,1368.0,1298.0,2212.0,0.0,6028.0
+Firefox,1,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,4.1,214.0,304.0,209.0,101.0,1.0,658.0
+Firefox,1,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",3,1250,0,1.3,237.0,322.0,60.0,134.0,1.0,965.0
+Firefox,1,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,56.2,0.0,0.0,0.0,219.0,10.2,4814.0
+Firefox,1,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",43,3430473,3.27,714.8,62.0,84.0,45.0,182.0,1301.6,4537.0
+Firefox,1,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",177,2171329,2.07,234.7,3145.0,194.0,111.0,811.0,1933.6,6543.0
+Firefox,1,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",87,3148956,3,735.5,0.0,0.0,0.0,349.0,2425.4,864.0
+Firefox,1,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",42,1005700,0.96,289.8,59.0,172.0,115.0,496.0,248.5,779.0
+Firefox,1,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",38,493887,0.47,246,568.0,528.0,104.0,225.0,266.3,1708.0
+Firefox,2,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",1,2517,0,6.4,2.0,174.0,0.0,178.0,0.0,402.0
+Firefox,2,Lightweight,"Example Domain","https://example.com",1,618,0,1.1,1.0,234.0,140.0,288.0,0.0,549.0
+Firefox,2,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,6,71.0,275.0,123.0,77.0,1.0,451.0
+Firefox,2,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",4,3925,0,2.9,76.0,589.0,402.0,192.0,1354.0,1340.0
+Firefox,2,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",48,277798,0.26,55.8,0.0,0.0,0.0,79.0,4.0,4813.0
+Firefox,2,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",38,2682829,2.56,636.2,0.0,122.0,92.0,137.0,1449.3,916.0
+Firefox,2,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",179,2205561,2.1,251.5,1539.0,3676.0,2984.0,749.0,948.8,6988.0
+Firefox,2,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",87,3193622,3.05,618.1,0.0,0.0,0.0,2440.0,3484.7,2865.0
+Firefox,2,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",42,1014739,0.97,335.6,0.0,182.0,126.0,290.0,237.5,533.0
+Firefox,2,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",38,493887,0.47,127.8,0.0,2719.0,64.0,160.0,469.3,3114.0
+Firefox,3,Lightweight,"CERN Original WWW","http://info.cern.ch/hypertext/WWW/TheProject.html",1,2517,0,5.7,1.0,182.0,0.0,173.0,0.0,0.0
+Firefox,3,Lightweight,"Example Domain","https://example.com",1,618,0,1,0.0,283.0,180.0,261.0,0.0,0.0
+Firefox,3,Lightweight,"NPR Text Portal","https://text.npr.org",1,2764,0,0.6,642.0,3428.0,2820.0,306.0,6.0,0.0
+Firefox,3,Lightweight,"DuckDuckGo Lite","https://lite.duckduckgo.com/lite/",4,3925,0,3.9,1.0,234.0,163.0,153.0,943.7,0.0
+Firefox,3,Lightweight,"W3C Standards Spec","https://www.w3.org/TR/PNG/",28,192384,0.18,33.5,0.0,0.0,0.0,2365.0,11.3,0.0
+Firefox,3,Heavyweight,"YouTube Feed SPA","https://www.youtube.com",136,3542371,3.38,560,64.0,83.0,45.0,139.0,3957.4,1102.0
+Firefox,3,Heavyweight,"VS Code Web Hub","https://github.com/microsoft/vscode",178,2204598,2.1,476.4,473.0,310.0,146.0,696.0,461.0,2129.0
+Firefox,3,Heavyweight,"Reddit Infinite Feed","https://www.reddit.com",3,8395,0.01,20,0.0,0.0,0.0,398.0,0.0,0.0
+Firefox,3,Heavyweight,"Unsplash High-Res Grid","https://unsplash.com",40,1005578,0.96,93.4,0.0,1226.0,186.0,3302.0,114.1,4601.0
+Firefox,3,Heavyweight,"Wiki GDP Table","https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)",36,491539,0.47,180.3,1275.0,208.0,102.0,59.0,386.8,1915.0

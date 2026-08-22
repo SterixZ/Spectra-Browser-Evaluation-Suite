@@ -1,0 +1,7 @@
+Browser,Category,SampleCount,MeanStartupMs,MeanLoadMs,MedianLoadMs,P90LoadMs,MeanPeakCpuPercent,MeanPeakMemoryMB,CoV_LoadTime
+Edge,Lightweight,15,198.0,3750.1,1779.0,8462.5,1.37,978.3,0.935
+Edge,Heavyweight,15,198.0,7642.4,5000.9,17943.6,4.23,1593.1,0.912
+Chrome,Lightweight,15,194.2,3221.5,979.3,5773.3,2.15,664.9,1.833
+Chrome,Heavyweight,15,194.2,9533.0,3740.8,23294.2,3.95,1308.3,1.020
+Firefox,Lightweight,15,474.6,2170.7,939.0,5309.4,1.29,794.5,1.026
+Firefox,Heavyweight,15,474.6,4799.1,4181.0,8846.2,4.62,1188.8,0.573

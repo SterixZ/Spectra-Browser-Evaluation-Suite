@@ -204,6 +204,9 @@ function getBenchmarkData(resultsDir) {
   );
   const workloadRaw = parseCsv(path.join(resultsDir, "workload_raw.csv"));
 
+  const networkPath = path.join(resultsDir, "network.csv");
+  const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
+
   const raw = {
     startup: {},
     cpu: {},
@@ -211,6 +214,11 @@ function getBenchmarkData(resultsDir) {
     speedometer: {},
     pageload: {},
     pageloadBySite: {},
+    ttfb: {},
+    fcp: {},
+    transferRate: {},
+    dns: {},
+    download: {},
   };
 
   const init = (b) => {
@@ -219,6 +227,11 @@ function getBenchmarkData(resultsDir) {
     raw.memory[b] ||= [];
     raw.speedometer[b] ||= [];
     raw.pageload[b] ||= [];
+    raw.ttfb[b] ||= [];
+    raw.fcp[b] ||= [];
+    raw.transferRate[b] ||= [];
+    raw.dns[b] ||= [];
+    raw.download[b] ||= [];
   };
 
   metrics.forEach((r) => {
@@ -254,6 +267,27 @@ function getBenchmarkData(resultsDir) {
     raw.pageloadBySite[site][b].push(t);
   });
 
+  network.forEach((r) => {
+    const b = r.Browser || r.browser;
+    if (!b) return;
+    init(b);
+
+    const ttfb = Number(r["TTFB(ms)"] || r.TTFB_Ms || r.ttfb);
+    if (!isNaN(ttfb) && ttfb > 0) raw.ttfb[b].push(ttfb);
+
+    const fcp = Number(r["FCP(ms)"] || r.FCP_Ms || r.fcp);
+    if (!isNaN(fcp) && fcp > 0) raw.fcp[b].push(fcp);
+
+    const rate = Number(r["TransferRate(KB/s)"] || r.TransferRateKBs || r.rate);
+    if (!isNaN(rate) && rate > 0) raw.transferRate[b].push(rate);
+
+    const dns = Number(r["DNS(ms)"] || r.DNS_Ms || r.dns);
+    if (!isNaN(dns)) raw.dns[b].push(dns);
+
+    const dl = Number(r["Download(ms)"] || r.Download_Ms || r.download);
+    if (!isNaN(dl)) raw.download[b].push(dl);
+  });
+
   // If standard metrics weren't present, populate from workload_raw
   workloadRaw.forEach((r) => {
     const b = r.Browser || r.browser;
@@ -277,6 +311,15 @@ function getBenchmarkData(resultsDir) {
       raw.pageloadBySite[site][b] ||= [];
       if (!pageloads.length) raw.pageloadBySite[site][b].push(loadTime);
     }
+
+    const ttfb = Number(r.TTFB_Ms || r["TTFB(ms)"]);
+    if (!isNaN(ttfb) && ttfb > 0 && !raw.ttfb[b].length) raw.ttfb[b].push(ttfb);
+
+    const fcp = Number(r.FCP_Ms || r["FCP(ms)"]);
+    if (!isNaN(fcp) && fcp > 0 && !raw.fcp[b].length) raw.fcp[b].push(fcp);
+
+    const rate = Number(r.TransferRateKBs || r["TransferRate(KB/s)"]);
+    if (!isNaN(rate) && rate > 0 && !raw.transferRate[b].length) raw.transferRate[b].push(rate);
   });
 
   const browsers = Array.from(
@@ -299,6 +342,11 @@ function getBenchmarkData(resultsDir) {
       memory: computeDescriptiveStats(raw.memory[b]),
       speedometer: computeDescriptiveStats(raw.speedometer[b]),
       pageload: computeDescriptiveStats(raw.pageload[b]),
+      ttfb: computeDescriptiveStats(raw.ttfb[b]),
+      fcp: computeDescriptiveStats(raw.fcp[b]),
+      transferRate: computeDescriptiveStats(raw.transferRate[b]),
+      dns: computeDescriptiveStats(raw.dns[b]),
+      download: computeDescriptiveStats(raw.download[b]),
     };
     cdf[b] = computeCdfData(raw.pageload[b]);
   });
