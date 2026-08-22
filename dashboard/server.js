@@ -307,8 +307,7 @@ function getBenchmarkData(resultsDir) {
   for (const [site, bMap] of Object.entries(raw.pageloadBySite)) {
     siteSummary[site] = {};
     for (const [b, vals] of Object.entries(bMap)) {
-      const validVals = vals.filter((v) => typeof v === "number" && !isNaN(v) && v > 0);
-      siteSummary[site][b] = computeDescriptiveStats(validVals);
+      siteSummary[site][b] = computeDescriptiveStats(vals);
     }
   }
 
@@ -342,13 +341,9 @@ function getBenchmarkData(resultsDir) {
     };
   }
 
-  const manifestPath = path.join(resultsDir, "run_manifest.json");
-  const manifest = fs.existsSync(manifestPath)
-    ? JSON.parse(fs.readFileSync(manifestPath, "utf8"))
-    : null;
+  const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
 
   return {
-    manifest,
     summary,
     siteSummary,
     cdf,

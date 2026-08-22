@@ -1,22 +1,137 @@
+// One script, one browser launch per run: measures startup time, page load
+// time per site, then CPU% and memory from a single stabilization window —
+// instead of separately re-opening the same sites once per metric. Finishes
+// with the Speedometer synthetic-score pass per browser.
+//
+// Usage:  node scripts/full_benchmark.js
+// Tune via env vars: RUNS, SPEEDOMETER_RUNS, STABILIZE_MS,
+//                     CPU_SAMPLE_COUNT, CPU_SAMPLE_INTERVAL_MS
+
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const { performance } = require("perf_hooks");
+const { execSync } = require("child_process");
 const {
   RESULTS_DIR,
   URLS,
   RUNS,
   SPEEDOMETER_RUNS,
   SPEEDOMETER_URL,
-  INTER_RUN_DELAY_MS,
-  INTER_SITE_DELAY_MS,
+  STABILIZE_MS,
+  CPU_SAMPLE_COUNT,
+  CPU_SAMPLE_INTERVAL_MS,
 } = require("./config");
-const { getLaunchers, ensureDir } = require("./browsers");
-const { sleep, getCpuTime, getMemoryMB, NavigationTelemetryMonitor } = require("./telemetry");
+const { getLaunchers, ensureResultsDir } = require("./browsers");
 
-/**
- * Runs multi-site page loading and W3C network telemetry collection for one run
- */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// NOTE: CPU/memory sampling matches by OS PROCESS NAME (Windows, via
+// PowerShell). Close other windows of the browser under test first, or
+// its usage gets folded into these numbers too.
+
+function getCpuTime(processName) {
+  try {
+    const command = `powershell -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object CPU -Sum).Sum"`;
+    const output = execSync(command, { encoding: "utf8" }).trim();
+    return Number(output) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function getMemoryMB(processName) {
+  try {
+    const cmd = `powershell -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object WorkingSet64 -Sum).Sum"`;
+    const output = execSync(cmd, { encoding: "utf8" }).trim();
+    const bytes = Number(output);
+    return isNaN(bytes) ? 0 : bytes / 1024 / 1024;
+  } catch {
+    return 0;
+  }
+}
+
+// Continuous Active-Navigation Telemetry Monitor
+// Samples process CPU & WorkingSet64 every 300ms during page navigation and render
+class NavigationTelemetryMonitor {
+  constructor(processName, sampleIntervalMs = 300) {
+    this.processName = processName;
+    this.sampleIntervalMs = sampleIntervalMs;
+    this.cpuCount = os.cpus().length || 1;
+    this.samples = [];
+    this.peakCpu = 0;
+    this.peakMemoryMB = 0;
+    this.running = false;
+    this.startCpuTime = 0;
+    this.startWallTime = 0;
+    this.lastCpuTime = 0;
+    this.lastWallTime = 0;
+  }
+
+  start() {
+    this.running = true;
+    this.startCpuTime = getCpuTime(this.processName);
+    this.startWallTime = performance.now();
+    this.lastCpuTime = this.startCpuTime;
+    this.lastWallTime = this.startWallTime;
+    this.peakMemoryMB = getMemoryMB(this.processName);
+
+    const pollLoop = async () => {
+      while (this.running) {
+        await sleep(this.sampleIntervalMs);
+        if (!this.running) break;
+
+        const currentCpuTime = getCpuTime(this.processName);
+        const currentWallTime = performance.now();
+        const currentMem = getMemoryMB(this.processName);
+
+        const deltaCpuSec = currentCpuTime - this.lastCpuTime;
+        const deltaWallSec = (currentWallTime - this.lastWallTime) / 1000;
+
+        if (deltaWallSec > 0 && deltaCpuSec >= 0) {
+          const cpuPercent = Number(
+            Math.max(0, Math.min(100, (deltaCpuSec * 100) / (this.cpuCount * deltaWallSec))).toFixed(2)
+          );
+          this.samples.push({ cpu: cpuPercent, mem: currentMem });
+          if (cpuPercent > this.peakCpu) this.peakCpu = cpuPercent;
+          if (currentMem > this.peakMemoryMB) this.peakMemoryMB = currentMem;
+        }
+
+        this.lastCpuTime = currentCpuTime;
+        this.lastWallTime = currentWallTime;
+      }
+    };
+
+    pollLoop();
+  }
+
+  stop() {
+    this.running = false;
+    const finalCpuTime = getCpuTime(this.processName);
+    const finalWallTime = performance.now();
+    const finalMem = getMemoryMB(this.processName);
+    if (finalMem > this.peakMemoryMB) this.peakMemoryMB = finalMem;
+
+    const totalCpuSec = Math.max(0, finalCpuTime - this.startCpuTime);
+    const totalWallSec = Math.max(0.001, (finalWallTime - this.startWallTime) / 1000);
+    const totalCpuPercent = Number(((totalCpuSec * 100) / (this.cpuCount * totalWallSec)).toFixed(2));
+
+    let avgCpu = totalCpuPercent;
+    if (this.samples.length > 0) {
+      const sampleAvg = this.samples.reduce((a, b) => a + b.cpu, 0) / this.samples.length;
+      avgCpu = Number(Math.max(totalCpuPercent, sampleAvg).toFixed(2));
+    }
+    const peakCpu = Number(Math.max(this.peakCpu, avgCpu, totalCpuPercent).toFixed(2));
+
+    return {
+      peakCpu,
+      avgCpu,
+      peakMemoryMB: Number(this.peakMemoryMB.toFixed(1)),
+      finalMemoryMB: Number(finalMem.toFixed(1)),
+    };
+  }
+}
+
 async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, networkCsv) {
   const startupStart = performance.now();
   const browser = await browserInfo.launch();
@@ -49,11 +164,11 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
 
       const navStart = performance.now();
       await page
-        .goto(url, { waitUntil: "domcontentloaded", timeout: 25000 })
+        .goto(url, { waitUntil: "domcontentloaded", timeout: 12000 })
         .catch(async () => {
-          await page.goto(url, { waitUntil: "commit", timeout: 25000 });
+          await page.goto(url, { waitUntil: "commit", timeout: 8000 });
         });
-      await page.waitForLoadState("load", { timeout: 8000 }).catch(() => {});
+      await page.waitForLoadState("load", { timeout: 4000 }).catch(() => {});
       const navElapsedSec = Math.max(0.1, (performance.now() - navStart) / 1000);
 
       const timing = await page.evaluate(() => {
@@ -98,9 +213,7 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       if (stats.peakCpu > peakRunCpuPercent) peakRunCpuPercent = stats.peakCpu;
       siteCpuAverages.push(stats.avgCpu);
 
-      const rawLoadMs = timing?.loadMs ?? (navElapsedSec * 1000);
-      const finalLoadMs = (rawLoadMs > 0 && rawLoadMs < 45000) ? rawLoadMs : (navElapsedSec * 1000);
-
+      const finalLoadMs = timing?.loadMs ?? (navElapsedSec * 1000);
       const totalBytes = Math.max(transferBytes, timing?.clientBytes || 0);
       const finalReqCount = Math.max(requestCount, timing?.clientCount || 1);
       const transferMB = Number((totalBytes / (1024 * 1024)).toFixed(2));
@@ -113,7 +226,7 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       const dlMs = (timing?.download || 0).toFixed(1);
       const fcpMs = (timing?.fcp || 0).toFixed(1);
 
-      if (finalLoadMs > 0) {
+      if (finalLoadMs != null) {
         pageloadCsv.rows.push(`${browserInfo.name},${run},${url},${finalLoadMs.toFixed(2)}`);
         networkCsv.rows.push(
           `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs},${dnsMs},${tcpMs},${tlsMs},${ttfbMs},${dlMs},${fcpMs}`
@@ -126,11 +239,10 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       console.log(`  ${url}: failed to load, skipping`);
     } finally {
       await page.close().catch(() => {});
-      await sleep(INTER_SITE_DELAY_MS);
     }
   }
 
-  // Calculate active navigation CPU across all websites in this run
+  // Calculate cumulative active CPU across the entire multi-site session
   const endCpuTime = getCpuTime(browserInfo.process);
   const endWallTime = performance.now();
   const totalElapsedSec = Math.max(0.1, (endWallTime - startWallTime) / 1000);
@@ -152,12 +264,9 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
     `${browserInfo.name},${run},${startupMs.toFixed(2)},${finalActiveCpu.toFixed(2)},${memoryMB.toFixed(2)}`
   );
 
-  await browser.close().catch(() => {});
+  await browser.close();
 }
 
-/**
- * Runs Speedometer 3.0 benchmark and extracts score directly via DOM selector
- */
 async function runSpeedometer(browserInfo, runNumber) {
   console.log(`  Speedometer run ${runNumber}`);
 
@@ -167,21 +276,12 @@ async function runSpeedometer(browserInfo, runNumber) {
     page.setDefaultTimeout(600000);
 
     await page.goto(SPEEDOMETER_URL, { waitUntil: "domcontentloaded", timeout: 45000 });
-    
-    const startBtn = page.locator(".start-tests-button, button#start-tests, button:has-text('Start Test')").first();
-    await startBtn.waitFor({ state: "attached", timeout: 45000 });
+    await page.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
+
+    const startButton = page.locator(".start-tests-button, button#start-tests, button:has-text('Start Test')").first();
+    await startButton.waitFor({ state: "visible", timeout: 30000 });
     await sleep(1000);
-
-    try {
-      await startBtn.click({ force: true, timeout: 10000 });
-    } catch {
-      await page.evaluate(() => {
-        const btn = document.querySelector(".start-tests-button, button#start-tests, button");
-        if (btn) btn.click();
-      });
-    }
-
-    console.log(`  Speedometer started for ${browserInfo.name}, running tests...`);
+    await startButton.click({ force: true });
 
     await page.waitForFunction(
       () => {
@@ -207,7 +307,10 @@ async function runSpeedometer(browserInfo, runNumber) {
     });
 
     if (!score || isNaN(score)) {
-      throw new Error("Score extraction failed.");
+      await page.screenshot({
+        path: path.join(RESULTS_DIR, `speedometer_error_${browserInfo.name}_${runNumber}.png`),
+      });
+      throw new Error("Score extraction failed. Screenshot saved.");
     }
 
     console.log(`  Speedometer score: ${score}`);
@@ -218,17 +321,8 @@ async function runSpeedometer(browserInfo, runNumber) {
   }
 }
 
-/**
- * Main Benchmark Runner
- */
-async function main() {
-  console.log(`\n========================================================================`);
-  console.log(`🚀 SPECTRA BROWSER PERFORMANCE EVALUATION SUITE`);
-  console.log(`   Methodology: 6-Pillar Framework & Raj Jain Ch. 10–14`);
-  console.log(`   Canonical Suite: 10 Websites × ${RUNS} Iterations | Speedometer: ${SPEEDOMETER_RUNS} Runs`);
-  console.log(`========================================================================\n`);
-
-  ensureDir(RESULTS_DIR);
+(async () => {
+  ensureResultsDir(RESULTS_DIR);
 
   const metricsCsv = { rows: ["Browser,Run,Startup(ms),CPU(%),Memory(MB)"] };
   const pageloadCsv = { rows: ["Browser,Run,Website,LoadTime(ms)"] };
@@ -236,57 +330,33 @@ async function main() {
   const networkCsv = { rows: ["Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms)"] };
 
   for (const browserInfo of getLaunchers()) {
-    console.log(`\n========== ${browserInfo.name.toUpperCase()} ==========`);
+    console.log(`\n========== ${browserInfo.name} ==========`);
 
     for (let run = 1; run <= RUNS; run++) {
       console.log(`\nRun ${run}/${RUNS}`);
       await runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, networkCsv);
-      await sleep(INTER_RUN_DELAY_MS);
+      await sleep(3000);
     }
 
-    console.log(`\n-- ${browserInfo.name}: Speedometer 3.0 --`);
+    console.log(`\n-- ${browserInfo.name}: Speedometer --`);
     for (let run = 1; run <= SPEEDOMETER_RUNS; run++) {
       try {
         const score = await runSpeedometer(browserInfo, run);
         speedometerCsv.rows.push(`${browserInfo.name},${run},${score}`);
       } catch (error) {
         console.log("  Speedometer FAILED:", error.message);
-        break;
+        break; // skip remaining speedometer runs for this browser, keep going to next browser
       }
     }
   }
 
-  // Save current active results
   fs.writeFileSync(path.join(RESULTS_DIR, "metrics.csv"), metricsCsv.rows.join("\n") + "\n");
   fs.writeFileSync(path.join(RESULTS_DIR, "pageload.csv"), pageloadCsv.rows.join("\n") + "\n");
   fs.writeFileSync(path.join(RESULTS_DIR, "speedometer.csv"), speedometerCsv.rows.join("\n") + "\n");
   fs.writeFileSync(path.join(RESULTS_DIR, "network.csv"), networkCsv.rows.join("\n") + "\n");
 
-  // Automatically archive a timestamped backup copy
-  const date = new Date();
-  const timestamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
-  ).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
-
-  const archiveDir = path.join(path.dirname(RESULTS_DIR), `results_${timestamp}`);
-  ensureDir(archiveDir);
-  fs.copyFileSync(path.join(RESULTS_DIR, "metrics.csv"), path.join(archiveDir, "metrics.csv"));
-  fs.copyFileSync(path.join(RESULTS_DIR, "pageload.csv"), path.join(archiveDir, "pageload.csv"));
-  fs.copyFileSync(path.join(RESULTS_DIR, "speedometer.csv"), path.join(archiveDir, "speedometer.csv"));
-  fs.copyFileSync(path.join(RESULTS_DIR, "network.csv"), path.join(archiveDir, "network.csv"));
-
-  console.log(`\n========================================================================`);
-  console.log(`✅ BENCHMARK COMPLETE!`);
-  console.log(`📁 Active Data: ${RESULTS_DIR}`);
-  console.log(`📁 Archive Copy: ${archiveDir}`);
-  console.log(`========================================================================\n`);
-}
-
-if (require.main === module) {
-  main().catch((err) => {
-    console.error("Benchmark failed:", err);
-    process.exit(1);
-  });
-}
-
-module.exports = { runCoreMetrics, runSpeedometer, main };
+  console.log("\n=============================================");
+  console.log("✅ Full benchmark complete!");
+  console.log(`📁 metrics.csv, pageload.csv, speedometer.csv, network.csv in ${RESULTS_DIR}`);
+  console.log("=============================================");
+})();

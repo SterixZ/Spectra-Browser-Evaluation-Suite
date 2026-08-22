@@ -817,8 +817,8 @@
   }
 
   const CANONICAL_ORDER = [
-    // Standard benchmark canonical list
-    "google", "github.com", "stackoverflow", "wikipedia", "youtube", "reddit", "microsoft", "mozilla", "playwright", "openai",
+    // Standard benchmark canonical list (10 reliable domains)
+    "google", "github.com", "ycombinator", "wikipedia", "youtube", "reddit", "amazon", "bbc", "playwright", "w3",
     // Workload benchmark canonical list (5 Ultra-Light followed by 5 Heavy SPAs)
     "example", "cern", "theproject", "npr", "duckduckgo", "httpbin", "hacker", "wikipedia", "w3c",
     "youtube", "vscode", "verge", "reddit", "amazon", "unsplash"
@@ -841,8 +841,8 @@
     if (s.includes("npr")) return "NPR Text";
     if (s.includes("duckduckgo") || s.includes("ddg")) return "DDG Lite";
     if (s.includes("httpbin")) return "HTTPBin";
-    if (s.includes("hacker")) return "HackerNews";
-    if (s.includes("w3c")) return "W3C";
+    if (s.includes("ycombinator") || s.includes("hacker")) return "HackerNews";
+    if (s.includes("w3.org") || s.includes("w3c") || s.includes("w3")) return "W3C Standards";
 
     // 2. Extreme Heavyweight Dynamic SPAs
     if (s.includes("youtube")) return "YouTube";
@@ -851,6 +851,7 @@
     if (s.includes("reddit")) return "Reddit";
     if (s.includes("amazon")) return "Amazon";
     if (s.includes("unsplash")) return "Unsplash";
+    if (s.includes("bbc")) return "BBC News";
 
     // 3. Standard Benchmark Sites mapping
     if (s.includes("google")) return "Google";

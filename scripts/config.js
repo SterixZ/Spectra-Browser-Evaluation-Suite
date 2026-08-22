@@ -1,53 +1,38 @@
 const path = require("path");
 
 module.exports = {
-  // Output and Data Directories
-  DATA_DIR: path.join(__dirname, "..", "data"),
+  // scripts/ lives one level below the project root, and results/ is a
+  // sibling of scripts/ at the root (matches the actual project layout).
   RESULTS_DIR: path.join(__dirname, "..", "results"),
 
-  // Benchmark Run Parameters
+  // Scale these to run bigger/smaller benchmarks. Override at the shell:
+  //   RUNS=20 node scripts/benchmark.js
   RUNS: Number(process.env.RUNS) || 3,
-  SPEEDOMETER_RUNS: Number(process.env.SPEEDOMETER_RUNS) || 3,
-  STABILIZE_MS: Number(process.env.STABILIZE_MS) || 3000,
-  INTER_RUN_DELAY_MS: 3000,
-  INTER_SITE_DELAY_MS: 1500,
+  SPEEDOMETER_RUNS: Number(process.env.SPEEDOMETER_RUNS) || 1,
 
-  // Speedometer 3.0 Benchmark URL
-  SPEEDOMETER_URL: "https://browserbench.org/Speedometer3.0/",
+  // How long to let the page settle after loading all URLS before sampling
+  // CPU/memory, and how the CPU sample itself is taken (N samples of
+  // `interval` ms each, averaged).
+  STABILIZE_MS: Number(process.env.STABILIZE_MS) || 2000,
+  CPU_SAMPLE_COUNT: Number(process.env.CPU_SAMPLE_COUNT) || 5,
+  CPU_SAMPLE_INTERVAL_MS: Number(process.env.CPU_SAMPLE_INTERVAL_MS) || 500,
 
-  // Standard 10-Website Canonical Suite (Direct endpoints to prevent multi-hop redirects)
   URLS: [
     "https://www.google.com",
     "https://github.com",
-    "https://stackoverflow.com",
+    "https://news.ycombinator.com",
     "https://www.wikipedia.org",
     "https://www.youtube.com",
     "https://www.reddit.com",
-    "https://learn.microsoft.com",
-    "https://developer.mozilla.org",
+    "https://www.amazon.com",
+    "https://www.bbc.com",
     "https://playwright.dev",
-    "https://openai.com",
+    "https://www.w3.org",
   ],
 
-  // 2-Tier Workload Benchmark Suite (5 Ultra-Lightweight vs 5 Heavyweight SPAs)
-  WORKLOADS: {
-    Lightweight: [
-      { name: "W3C Standards", url: "https://www.w3.org" },
-      { name: "CERN World Wide Web", url: "http://info.cern.ch" },
-      { name: "Project Gutenberg", url: "https://www.gutenberg.org" },
-      { name: "NPR Text-Only", url: "https://text.npr.org" },
-      { name: "Wikipedia Main", url: "https://www.wikipedia.org" },
-    ],
-    Heavyweight: [
-      { name: "YouTube Video Hub", url: "https://www.youtube.com" },
-      { name: "Reddit Feed (SPA)", url: "https://www.reddit.com" },
-      { name: "The Verge Web App", url: "https://www.theverge.com" },
-      { name: "VS Code Online", url: "https://vscode.dev" },
-      { name: "Amazon Storefront", url: "https://www.amazon.com" },
-    ],
-  },
+  SPEEDOMETER_URL: "https://browserbench.org/Speedometer3.0/",
 
-  // Target Web Browsers & OS Process Names
+  // process: the OS process name used for CPU/memory sampling (Windows).
   BROWSERS: [
     { name: "Chrome", process: "chrome", channel: "chrome" },
     { name: "Edge", process: "msedge", channel: "msedge" },

@@ -1,0 +1,4 @@
+Browser,Light_MeanLoadMs,Heavy_MeanLoadMs,LoadInflationRatio,Light_PeakRAM_MB,Heavy_PeakRAM_MB,RAM_InflationRatio,Light_PeakCPU,Heavy_PeakCPU
+Chrome,5905.3,8235.5,1.39x,652.6,1139.3,1.75x,2.49,3.96
+Edge,4797.2,4505.1,0.94x,496.7,992.1,2.00x,2.45,4.50
+Firefox,3068.0,5216.9,1.70x,802.9,1091.2,1.36x,2.23,5.02

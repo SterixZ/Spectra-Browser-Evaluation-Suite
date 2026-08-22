@@ -122,15 +122,11 @@ function analyzeDirectory(dir) {
   console.log(`\n========================================================================================\n`);
 }
 
-if (require.main === module) {
-  const dirArg = process.argv[2] ? path.join(PROJECT_ROOT, process.argv[2]) : RESULTS_DIR;
-  const targetDir = fs.existsSync(dirArg)
-    ? dirArg
-    : fs.existsSync(RESULTS_DIR)
-    ? RESULTS_DIR
-    : PROJECT_ROOT;
+const dirArg = process.argv[2] ? path.join(PROJECT_ROOT, process.argv[2]) : RESULTS_DIR;
+const targetDir = fs.existsSync(dirArg)
+  ? dirArg
+  : fs.existsSync(RESULTS_DIR)
+  ? RESULTS_DIR
+  : path.join(PROJECT_ROOT, "results_2026-08-07_15-52");
 
-  analyzeDirectory(targetDir);
-}
-
-module.exports = { analyzeDirectory, parseCsv };
+analyzeDirectory(targetDir);

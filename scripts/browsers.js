@@ -1,4 +1,3 @@
-const fs = require("fs");
 const { chromium, firefox } = require("playwright");
 const { BROWSERS } = require("./config");
 
@@ -19,25 +18,21 @@ const FIREFOX_ARGS = [
   "-no-remote",
 ];
 
-// Returns standardized launcher objects: { name, process, launch() }
+// Returns launcher objects: { name, process, launch() }
 function getLaunchers() {
   return BROWSERS.map((b) => ({
     name: b.name,
     process: b.process,
-    launch: (options = {}) =>
+    launch: () =>
       b.channel
-        ? chromium.launch({ channel: b.channel, headless: false, ...options })
-        : firefox.launch({ headless: false, ...options }),
+        ? chromium.launch({ channel: b.channel, headless: false, args: CHROMIUM_ARGS })
+        : firefox.launch({ headless: false, args: FIREFOX_ARGS }),
   }));
 }
 
-function ensureDir(dir) {
+function ensureResultsDir(dir) {
+  const fs = require("fs");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-module.exports = {
-  getLaunchers,
-  ensureDir,
-  CHROMIUM_ARGS,
-  FIREFOX_ARGS,
-};
+module.exports = { getLaunchers, ensureResultsDir, CHROMIUM_ARGS, FIREFOX_ARGS };
