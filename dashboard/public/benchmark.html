@@ -927,13 +927,26 @@
     const browsers = Object.keys(summary);
     const theme = getThemeColors();
 
-    const sites = Object.keys(siteSummary).sort((a, b) => getCanonicalSiteIndex(a) - getCanonicalSiteIndex(b));
-    const cleanLabels = sites.map(cleanSiteLabel);
+    // Deduplicate and merge by clean label
+    const labelMap = {};
+    for (const [site, bMap] of Object.entries(siteSummary)) {
+      const label = cleanSiteLabel(site);
+      labelMap[label] ||= { originalSite: site, bMap: {} };
+      for (const [b, stat] of Object.entries(bMap)) {
+        if (stat && stat.mean > 0) {
+          labelMap[label].bMap[b] = stat;
+        }
+      }
+    }
+
+    const uniqueLabels = Object.keys(labelMap).sort((a, b) => {
+      return getCanonicalSiteIndex(labelMap[a].originalSite) - getCanonicalSiteIndex(labelMap[b].originalSite);
+    });
 
     const datasets = browsers.map(b => {
       const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.7)', border: '#888' };
-      const series = sites.map(site => {
-        const stat = siteSummary[site]?.[b];
+      const series = uniqueLabels.map(label => {
+        const stat = labelMap[label].bMap[b];
         return stat ? Number(stat.mean.toFixed(0)) : 0;
       });
 
@@ -949,7 +962,7 @@
 
     chartInstance = new Chart(ctx, {
       type: 'bar',
-      data: { labels: cleanLabels, datasets },
+      data: { labels: uniqueLabels, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -963,11 +976,11 @@
           x: {
             ticks: {
               color: theme.text,
-              font: { family: 'Inter', weight: 600, size: 11.5 },
-              maxRotation: 0,
+              font: { family: 'Inter', weight: 600, size: 12 },
+              maxRotation: 25,
               minRotation: 0,
               autoSkip: false,
-              padding: 8,
+              padding: 10,
             },
             grid: { display: false },
           }

@@ -304,12 +304,12 @@ function getBenchmarkData(resultsDir) {
     if (!isNaN(mem)) raw.memory[b].push(mem);
 
     const loadTime = Number(r.LoadTimeMs || r["LoadTime(ms)"] || r.load_time_ms);
-    if (!isNaN(loadTime) && loadTime > 0) {
-      if (!pageloads.length) raw.pageload[b].push(loadTime);
+    if (!isNaN(loadTime) && loadTime > 0 && !pageloads.length) {
+      raw.pageload[b].push(loadTime);
       const site = r.SiteName || r.url || r.Url || r.Website || "unknown";
       raw.pageloadBySite[site] ||= {};
       raw.pageloadBySite[site][b] ||= [];
-      if (!pageloads.length) raw.pageloadBySite[site][b].push(loadTime);
+      raw.pageloadBySite[site][b].push(loadTime);
     }
 
     const ttfb = Number(r.TTFB_Ms || r["TTFB(ms)"]);
@@ -353,9 +353,13 @@ function getBenchmarkData(resultsDir) {
 
   const siteSummary = {};
   for (const [site, bMap] of Object.entries(raw.pageloadBySite)) {
+    const hasData = Object.values(bMap).some((vals) => vals && vals.length > 0);
+    if (!hasData) continue;
     siteSummary[site] = {};
     for (const [b, vals] of Object.entries(bMap)) {
-      siteSummary[site][b] = computeDescriptiveStats(vals);
+      if (vals && vals.length > 0) {
+        siteSummary[site][b] = computeDescriptiveStats(vals);
+      }
     }
   }
 
