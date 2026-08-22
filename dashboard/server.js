@@ -227,9 +227,9 @@ function getBenchmarkData(resultsDir) {
     init(b);
     const startup = Number(r["Startup(ms)"] || r.startup_time_ms || r.StartupMs);
     if (!isNaN(startup) && startup > 0) raw.startup[b].push(startup);
-    const cpu = Number(r["CPU(%)"] || r.cpu_percent || r.PeakCpuPercent || r.CpuPercent);
+    const cpu = Number(r["CPU(%)"] || r["ActiveCPU(%)"] || r.cpu_percent || r.PeakCpuPercent || r.CpuPercent);
     if (!isNaN(cpu)) raw.cpu[b].push(cpu);
-    const mem = Number(r["Memory(MB)"] || r.memory_mb || r.PeakMemoryMB || r.MemoryMB);
+    const mem = Number(r["Memory(MB)"] || r["PeakMemory(MB)"] || r.memory_mb || r.PeakMemoryMB || r.MemoryMB);
     if (!isNaN(mem)) raw.memory[b].push(mem);
   });
 
@@ -263,10 +263,10 @@ function getBenchmarkData(resultsDir) {
     const startup = Number(r.StartupMs || r["Startup(ms)"] || r.startup_time_ms);
     if (!isNaN(startup) && startup > 0 && !raw.startup[b].length) raw.startup[b].push(startup);
 
-    const cpu = Number(r.PeakCpuPercent || r.CpuPercent || r["CPU(%)"] || r.cpu_percent);
+    const cpu = Number(r.PeakCpuPercent || r.CpuPercent || r["CPU(%)"] || r["ActiveCPU(%)"] || r.cpu_percent);
     if (!isNaN(cpu)) raw.cpu[b].push(cpu);
 
-    const mem = Number(r.PeakMemoryMB || r.MemoryMB || r["Memory(MB)"] || r.memory_mb);
+    const mem = Number(r.PeakMemoryMB || r.MemoryMB || r["Memory(MB)"] || r["PeakMemory(MB)"] || r.memory_mb);
     if (!isNaN(mem)) raw.memory[b].push(mem);
 
     const loadTime = Number(r.LoadTimeMs || r["LoadTime(ms)"] || r.load_time_ms);
@@ -330,17 +330,17 @@ function getBenchmarkData(resultsDir) {
   const workloadCompPath = path.join(resultsDir, "workload_comparison.csv");
   const workloadRawPath = path.join(resultsDir, "workload_raw.csv");
   const workloadSummaryPath = path.join(resultsDir, "workload_summary.csv");
-  const networkPath = path.join(resultsDir, "network.csv");
 
   let workloads = null;
-  if (fs.existsSync(workloadCompPath)) {
+  if (fs.existsSync(workloadCompPath) || fs.existsSync(workloadRawPath)) {
     workloads = {
-      comparison: parseCsv(workloadCompPath),
+      comparison: fs.existsSync(workloadCompPath) ? parseCsv(workloadCompPath) : [],
       summary: fs.existsSync(workloadSummaryPath) ? parseCsv(workloadSummaryPath) : [],
       raw: fs.existsSync(workloadRawPath) ? parseCsv(workloadRawPath) : [],
     };
   }
 
+  const networkPath = path.join(resultsDir, "network.csv");
   const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
 
   return {
@@ -366,7 +366,7 @@ function listRunFolders() {
   const runs = entries
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
-    .filter((name) => name === "results" || name.startsWith("results_") || name.startsWith("workloads_"))
+    .filter((name) => name === "results" || name === "workloads" || name.startsWith("results_") || name.startsWith("workloads_"))
     .filter((name) =>
       fs.existsSync(path.join(PROJECT_ROOT, name, "metrics.csv")) ||
       fs.existsSync(path.join(PROJECT_ROOT, name, "workload_raw.csv")) ||
@@ -374,7 +374,13 @@ function listRunFolders() {
       fs.existsSync(path.join(PROJECT_ROOT, name, "pageloads.csv"))
     );
 
-  runs.sort((a, b) => (a === "results" ? -1 : b === "results" ? 1 : b.localeCompare(a)));
+  runs.sort((a, b) => {
+    if (a === "results") return -1;
+    if (b === "results") return 1;
+    if (a === "workloads") return -1;
+    if (b === "workloads") return 1;
+    return b.localeCompare(a);
+  });
   return runs;
 }
 

@@ -10,6 +10,9 @@
     "bench:edge": "node scripts/bench_edge.js",
     "bench:firefox": "node scripts/bench_firefox.js",
     "bench:workloads": "node scripts/workload_benchmark.js",
+    "bench:workload:chrome": "node scripts/workload_chrome.js",
+    "bench:workload:edge": "node scripts/workload_edge.js",
+    "bench:workload:firefox": "node scripts/workload_firefox.js",
     "analyze": "node scripts/analyze.js",
     "dashboard": "node dashboard/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -1,5 +1,7 @@
 // Core Benchmark Execution Module
 // Supports running individual browsers (Chrome, Edge, Firefox) or all browsers together
+// Records full telemetry (Active CPU, Peak CPU burst, RAM, Peak RAM, W3C waterfall)
+// Auto-archives results/ to results_YYYY-MM-DD_HH-MM only when ALL 3 browsers are complete
 
 const os = require("os");
 const fs = require("fs");
@@ -235,7 +237,7 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       if (finalLoadMs != null) {
         pageloadCsv.rows.push(`${browserInfo.name},${run},${url},${finalLoadMs.toFixed(2)}`);
         networkCsv.rows.push(
-          `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs},${dnsMs},${tcpMs},${tlsMs},${ttfbMs},${dlMs},${fcpMs}`
+          `${browserInfo.name},${run},${url},${finalReqCount},${totalBytes},${transferMB},${transferRateKBs},${dnsMs},${tcpMs},${tlsMs},${ttfbMs},${dlMs},${fcpMs},${stats.peakCpu.toFixed(2)},${stats.peakMemoryMB.toFixed(1)}`
         );
         console.log(
           `  ${url}: ${finalLoadMs.toFixed(0)}ms load (TTFB: ${ttfbMs}ms, FCP: ${fcpMs}ms) | peak_cpu=${stats.peakCpu}% peak_mem=${stats.peakMemoryMB}MB | ${transferMB}MB (${finalReqCount} reqs @ ${transferRateKBs} KB/s)`
@@ -263,11 +265,11 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
   const memoryMB = Number(Math.max(peakRunMemoryMB, getMemoryMB(browserInfo.process)).toFixed(2));
 
   console.log(
-    `  ▶ Run ${run} Summary: startup=${startupMs.toFixed(0)}ms active_cpu=${finalActiveCpu.toFixed(1)}% (peak_burst=${peakRunCpuPercent.toFixed(1)}%) peak_mem=${memoryMB.toFixed(1)}MB`
+    `  ▶ Run ${run} Summary: startup=${startupMs.toFixed(0)}ms active_cpu=${finalActiveCpu.toFixed(1)}% (peak_burst=${peakRunCpuPercent.toFixed(1)}%) peak_mem=${peakRunMemoryMB.toFixed(1)}MB`
   );
 
   metricsCsv.rows.push(
-    `${browserInfo.name},${run},${startupMs.toFixed(2)},${finalActiveCpu.toFixed(2)},${memoryMB.toFixed(2)}`
+    `${browserInfo.name},${run},${startupMs.toFixed(2)},${finalActiveCpu.toFixed(2)},${peakRunCpuPercent.toFixed(2)},${memoryMB.toFixed(2)},${peakRunMemoryMB.toFixed(2)}`
   );
 
   await browser.close();
@@ -327,6 +329,41 @@ async function runSpeedometer(browserInfo, runNumber) {
   }
 }
 
+function checkAndArchiveResultsDir() {
+  const metricsPath = path.join(RESULTS_DIR, "metrics.csv");
+  if (!fs.existsSync(metricsPath)) return;
+
+  const content = fs.readFileSync(metricsPath, "utf8");
+  const lines = content.trim().split("\n").slice(1);
+  const recordedBrowsers = new Set();
+  for (const line of lines) {
+    const browser = line.split(",")[0].trim();
+    if (browser) recordedBrowsers.add(browser.toLowerCase());
+  }
+
+  const allThree = ["chrome", "edge", "firefox"].every((b) => recordedBrowsers.has(b));
+  if (allThree) {
+    const date = new Date();
+    const timestamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate()
+    ).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
+    const projectRoot = path.dirname(RESULTS_DIR);
+    let finalDir = path.join(projectRoot, `results_${timestamp}`);
+
+    if (fs.existsSync(finalDir)) {
+      finalDir = path.join(projectRoot, `results_${timestamp}_${String(date.getSeconds()).padStart(2, "0")}`);
+    }
+
+    fs.renameSync(RESULTS_DIR, finalDir);
+    console.log(`\n🎉 ALL 3 BROWSERS COMPLETE!`);
+    console.log(`📦 Archived full results to: ${finalDir}`);
+    console.log(`📁 Subsequent runs will create a fresh results/ directory.\n`);
+  } else {
+    const remaining = ["Chrome", "Edge", "Firefox"].filter((b) => !recordedBrowsers.has(b.toLowerCase()));
+    console.log(`\nℹ️  Recorded: ${Array.from(recordedBrowsers).join(", ")} | Waiting for: ${remaining.join(", ")} before archiving to results_timestamp.`);
+  }
+}
+
 async function runBenchmarkForBrowsers(targetNames = ["Chrome", "Edge", "Firefox"]) {
   ensureResultsDir(RESULTS_DIR);
 
@@ -342,10 +379,10 @@ async function runBenchmarkForBrowsers(targetNames = ["Chrome", "Edge", "Firefox
     return { rows: [header] };
   };
 
-  const metricsCsv = readOrInit(metricsPath, "Browser,Run,Startup(ms),CPU(%),Memory(MB)");
+  const metricsCsv = readOrInit(metricsPath, "Browser,Run,Startup(ms),CPU(%),PeakCPU(%),Memory(MB),PeakMemory(MB)");
   const pageloadCsv = readOrInit(pageloadPath, "Browser,Run,Website,LoadTime(ms)");
   const speedometerCsv = readOrInit(speedometerPath, "Browser,Run,Score");
-  const networkCsv = readOrInit(networkPath, "Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms)");
+  const networkCsv = readOrInit(networkPath, "Browser,Run,Website,Requests,TransferBytes,Transfer(MB),TransferRate(KB/s),DNS(ms),TCP(ms),TLS(ms),TTFB(ms),Download(ms),FCP(ms),PeakCPU(%),PeakMemory(MB)");
 
   const allLaunchers = getLaunchers();
   const selectedLaunchers = allLaunchers.filter(b => 
@@ -390,6 +427,9 @@ async function runBenchmarkForBrowsers(targetNames = ["Chrome", "Edge", "Firefox
   console.log(`✅ Benchmark Completed for: ${selectedLaunchers.map(b => b.name).join(", ")}`);
   console.log(`📁 CSV data saved in: ${RESULTS_DIR}`);
   console.log(`======================================================\n`);
+
+  // Check if all 3 browsers are present in results/; if so, archive folder!
+  checkAndArchiveResultsDir();
 }
 
 module.exports = {
