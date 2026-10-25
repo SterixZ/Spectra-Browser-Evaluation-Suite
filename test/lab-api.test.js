@@ -9,6 +9,7 @@ const { createLabRouter } = require("../scripts/lab/api");
 const { RunStore } = require("../scripts/lab/store");
 const { CATALOG } = require("../scripts/lab/catalog");
 let root, server, base;
+const controls = [];
 
 before(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "spectra-api-test-"));
@@ -16,7 +17,9 @@ before(async () => {
   store.create({ schemaVersion: 1, id: "lab_test", status: "completed", startedAt: new Date().toISOString(),
     settings: { browsers: ["chromium"], suites: ["javascript"], runs: 3, profile: "quick", scale: 1, headless: true },
     catalog: CATALOG.filter(suite => suite.id === "javascript"), samples: [1, 2, 3].map(iteration => ({ key: `chromium/javascript/${iteration}`, browser: "chromium", suite: "javascript", iteration, attempt: 1, status: "ok", metrics: { sortMs: iteration, jsonMs: 2, computeMs: 3 } })) });
-  const app = express(); app.use("/api/lab", createLabRouter(store));
+  const manager = { activity: () => ({ active: null }), start: async body => { controls.push(["start", body]); return { runId: "lab_started" }; },
+    resume: async id => { controls.push(["resume", id]); return { runId: id }; }, stop: id => { controls.push(["stop", id]); return { runId: id, stopping: true }; } };
+  const app = express(); app.use("/api/lab", createLabRouter(store, manager));
   server = app.listen(0, "127.0.0.1"); await once(server, "listening"); base = `http://127.0.0.1:${server.address().port}/api/lab`;
 });
 after(async () => { await new Promise(resolve => server.close(resolve)); fs.rmSync(root, { recursive: true, force: true }); });
@@ -46,4 +49,19 @@ test("CSV download is an attachment and includes each measured sample", async ()
   const response = await fetch(base + "/runs/lab_test/csv");
   assert.match(response.headers.get("content-disposition"), /lab_test.csv/);
   assert.match(await response.text(), /chromium,javascript,3,1,ok/);
+});
+test("Dashboard start, stop, and resume actions return accepted jobs", async () => {
+  const request = async (route, body = {}) => fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const started = await request("/runs", { browsers: ["chromium"], suites: ["javascript"] });
+  assert.equal(started.status, 202); assert.equal((await started.json()).runId, "lab_started");
+  assert.equal((await request("/runs/lab_started/stop")).status, 202);
+  assert.equal((await request("/runs/lab_started/resume")).status, 202);
+  assert.deepEqual(controls.map(action => action[0]), ["start", "stop", "resume"]);
+});
+test("Run controls reject foreign origins, form posts, and malformed JSON", async () => {
+  const foreign = await fetch(base + "/runs", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://another-site.example" }, body: "{}" });
+  assert.equal(foreign.status, 403);
+  assert.equal((await fetch(base + "/runs", { method: "POST", body: "browsers=chromium" })).status, 415);
+  const malformed = await fetch(base + "/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{" });
+  assert.equal(malformed.status, 400); assert.match((await malformed.json()).error, /could not be read/);
 });

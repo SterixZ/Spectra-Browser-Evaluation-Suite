@@ -37,9 +37,14 @@ test("Real browser runs all seven suites and renders saved results in the Lab", 
   const page = await context.newPage();
   const errors = []; page.on("pageerror", error => errors.push(error.message));
   await page.goto(`${base}/lab.html?run=${run.id}`);
-  await page.waitForFunction(() => document.getElementById("runStatus").textContent === "COMPLETED");
+  await page.waitForFunction(() => document.getElementById("runStatus").textContent === "Complete");
   assert.equal(await page.locator("#sampleCount").textContent(), "7 / 7");
   assert.equal(await page.locator("#suiteSelect option").count(), 7);
+  assert.equal(await page.locator("#overviewBody tr").count(), 7);
+  assert.equal(await page.locator("#singleBrowserNotice").isVisible(), true);
+  assert.equal(await page.locator("#labChart").isVisible(), false);
+  assert.equal(await page.locator("#singleResult").isVisible(), true);
+  assert.doesNotMatch(await page.locator("#resultTitle").textContent(), /comparison/);
   for (const suite of run.settings.suites) {
     await page.selectOption("#suiteSelect", suite);
     const metricCount = Object.keys(run.catalog.find(item => item.id === suite).metrics).length;
@@ -49,14 +54,44 @@ test("Real browser runs all seven suites and renders saved results in the Lab", 
   assert.equal(await page.locator("#labSamples tr").count(), 7);
   assert.match(await page.locator("#planCommand").inputValue(), /npm run bench:lab/);
   assert.equal(await page.locator("#downloadCsv").getAttribute("href"), `/api/lab/runs/${run.id}/csv`);
+  const images = path.join(__dirname, "../test-results"); fs.mkdirSync(images, { recursive: true });
+  await page.screenshot({ path: path.join(images, `lab-${browserId}-light.png`), fullPage: true });
   await page.locator('[data-theme-choice="dark"]').click();
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
-  const images = path.join(__dirname, "../test-results"); fs.mkdirSync(images, { recursive: true });
   await page.screenshot({ path: path.join(images, `lab-${browserId}.png`), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "Mobile layout overflows horizontally");
   await page.screenshot({ path: path.join(images, `lab-${browserId}-mobile.png`), fullPage: true });
   assert.deepEqual(errors, []);
+
+  // Starting a real test from the page must work without terminal commands.
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.locator("#newRun").click();
+  await page.screenshot({ path: path.join(images, `lab-${browserId}-setup.png`), fullPage: true });
+  for (const id of Object.keys(BROWSERS)) await page.locator(`#planBrowsers input[value="${id}"]`).setChecked(id === browserId);
+  for (const suite of run.catalog) await page.locator(`#planSuites input[value="${suite.id}"]`).setChecked(suite.id === "javascript");
+  await page.locator(".advanced-options summary").click();
+  await page.locator("#planRuns").fill("2"); await page.locator("#planWarmup").fill("0");
+  await page.locator("#startTest").click();
+  await page.waitForFunction(previous => new URL(location.href).searchParams.get("run") !== previous && document.getElementById("runStatus").textContent === "Complete", run.id);
+  assert.equal(await page.locator("#sampleCount").textContent(), "2 / 2");
+  assert.equal(await page.locator("#planner").isVisible(), false);
+
+  // A simulated second browser is a UI fixture only; it must produce a real
+  // two-column comparison state instead of the individual-result presentation.
+  const comparison = structuredClone(run), peer = browserId === "firefox" ? "chromium" : "firefox";
+  comparison.id = "lab_comparison_fixture";
+  comparison.settings.browsers.push(peer);
+  comparison.samples.push(...run.samples.map(sample => ({ ...sample, key: `${peer}/${sample.suite}/${sample.iteration}`, browser: peer,
+    metrics: Object.fromEntries(Object.entries(sample.metrics).map(([key, value]) => [key, value * 1.5])) })));
+  new RunStore(root).create(comparison);
+  await page.goto(`${base}/lab.html?run=${comparison.id}`);
+  await page.waitForFunction(() => document.getElementById("overviewTitle").textContent === "Browsers, side by side");
+  assert.equal(await page.locator("#overviewHead th").count(), 3);
+  assert.equal(await page.locator(".comparison-row").count(), 2);
+  assert.equal(await page.locator("#singleBrowserNotice").isVisible(), false);
+  assert.equal(await page.locator("#singleResult").isVisible(), false);
+  assert.match(await page.locator("#resultTitle").textContent(), /browser comparison/);
 
   // Verify the empty state after switching to a separate results root.
   const emptyStore = new RunStore(path.join(root, "empty"));
@@ -68,6 +103,7 @@ test("Real browser runs all seven suites and renders saved results in the Lab", 
   await context.route("**/*", route => route.request().url().startsWith(emptyBase) ? route.continue() : route.abort());
   await page.goto(emptyBase + "/lab.html");
   await page.waitForFunction(() => !document.getElementById("emptyLab").hidden);
-  assert.equal(await page.locator("#planner").getAttribute("open"), "");
+  await page.locator("#emptyStart").click();
+  assert.equal(await page.locator("#planner").isVisible(), true);
   await context.close();
 });

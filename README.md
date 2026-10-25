@@ -97,7 +97,7 @@ To use all Playwright engine builds, install them with `npx playwright install c
 | `standard` | 5 | 3× |
 | `stress` | 10 | 8× |
 
-Each profile has one unmeasured warmup per suite/browser. Override these settings with `--runs 1..100`, `--warmup 0..10`, `--scale 1..20`, and `--timeout 1000..300000` (milliseconds per sample). Runs default to headless mode; use `--headed` for visible windows. The planner in Benchmark Lab builds commands and shows the total number of samples before you start.
+Each profile has one unmeasured warmup per suite/browser. Override these settings with `--runs 1..100`, `--warmup 0..10`, `--scale 1..20`, and `--timeout 1000..300000` (milliseconds per sample). Runs default to headless mode; use `--headed` for visible windows. The New test dialog shows the total number of checks before you start. Use Start test to run directly from the page, Stop test to save unfinished progress, and Resume test to retry a stopped or partially failed run. Terminal commands remain available under Prefer the terminal?
 
 Browser targets execute **sequentially** to avoid competing for resources. Only the multi-tab suite opens pages concurrently; its load scales from 2 to a maximum of 16 tabs. Suite order rotates between browsers to reduce a consistent first-suite bias. Each sample uses a new, non-persistent context with a fixed 1280 × 800 viewport and device scale factor of 1.
 
@@ -114,7 +114,11 @@ Set `SPECTRA_RESULTS_DIR` to change the results location; use the same value for
 
 ### Compare and export
 
-Start the dashboard with `npm start`, then open **Benchmark Lab**. Choose an experiment and a suite to see a chart, means, confidence intervals, medians, percentiles, and sample history. The page refreshes running experiments, paginates saved runs and sample history, filters samples by browser, and downloads all attempts as CSV. Run URLs can be bookmarked locally.
+Start the dashboard with `npm start`, then open **Browser benchmarks** (Benchmark Lab). Click **New test**, select browsers and test groups, and press **Start test**. No terminal command is needed for a normal run. The page shows progress and supports stopping and resuming managed tests; only one managed test runs at a time.
+
+The overview shows every test group in rows with a separate column for each browser. Each row uses one representative measurement; compare browser values within that row. Select a group for all its measurements. When at least two browsers have measurements, compact horizontal bars compare them under the same settings. A single-browser run shows individual results and an explicit notice, with a shortcut to set up a comparison. No peer measurements are invented.
+
+Saved tests use readable browser names and dates. Detailed statistics, individual checks, and machine information are available in expandable sections. The page refreshes active runs, paginates history, filters checks by browser, and exports all attempts as CSV. Run URLs can be bookmarked locally.
 
 Missing APIs, timeouts, and browser-launch failures have explicit statuses and never become invented zero scores. A single sample has no confidence estimate. Compare results only when workload revision, size, browser mode, and machine conditions match. Hardware acceleration and headless operation can materially affect graphics timings. Background activity, thermal changes, and timer precision still affect these synthetic measurements.
 
@@ -198,7 +202,8 @@ scripts/
     runner.js         Warmups, timeouts, isolation, checkpoints, and resume
     store.js          Atomic manifests, compact discovery metadata, summaries, CSV
     fixture-server.js Local deterministic documents and binary payloads
-    api.js            Paginated read-only Lab endpoints
+    api.js            Paginated results and validated local run controls
+    manager.js        One active dashboard job with stop/resume support
 test/                 Regression and API tests
 results_*/            Included standard sample run
 workloads_*/          Included workload sample run

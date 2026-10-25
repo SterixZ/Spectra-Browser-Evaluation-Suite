@@ -80,6 +80,7 @@ async function runLab(options, dependencies = {}) {
   try {
     run.status = "running"; delete run.completedAt; delete run.lastError;
     store.save(run);
+    dependencies.onStarted?.(run);
     fixture = await (dependencies.startFixture || startFixtureServer)();
     for (const browserId of run.settings.browsers) {
       if (signal?.aborted) break;

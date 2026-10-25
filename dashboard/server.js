@@ -136,7 +136,8 @@ async function tick(name) {
 const app = express();
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/api/lab", createLabRouter());
+const labRouter = createLabRouter();
+app.use("/api/lab", labRouter);
 
 app.get("/api/runs", (req, res) => {
   res.json({ runs: listRunFolders(), workloads: listWorkloadFolders() });
@@ -216,6 +217,11 @@ wss.on("connection", (ws) => {
 });
 
 async function shutdown() {
+  const activeTest = labRouter.labManager.active;
+  if (activeTest) {
+    activeTest.controller.abort();
+    await activeTest.promise;
+  }
   for (const name of Object.keys(sessions)) {
     await stopBrowser(name);
   }
