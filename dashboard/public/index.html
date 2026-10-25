@@ -11,69 +11,15 @@
 </script>
 <link rel="stylesheet" href="/theme.css" />
 <script src="/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/sidebar.css" />
 </head>
 <body>
 
 <div class="app-layout">
 
   <!-- Left Sidebar -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div>
-        <div class="brand-title">Spectra</div>
-        <div class="brand-sub">Live Dashboard</div>
-      </div>
-    </div>
-
-    <div class="nav-group-title">Navigation</div>
-    <nav class="nav-links">
-      <a href="/" class="nav-item active">
-        <span>Live Dashboard</span>
-      </a>
-      <a href="/benchmark.html" class="nav-item">
-        <span>Benchmark Scorecard</span>
-      </a>
-      <a href="/lab.html" class="nav-item"><span>Benchmark Lab</span></a>
-    </nav>
-
-    <div class="sidebar-spacer"></div>
-
-    <div class="nav-group-title" style="margin-bottom:6px;">System Status</div>
-    <div style="background:var(--panel-alt); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; margin:0 4px 16px 4px; font-size:12px; line-height:1.6; color:var(--muted);">
-      <div style="display:flex; justify-content:space-between;">
-        <span>Active Instances:</span>
-        <strong style="color:var(--text);" id="sidebarActiveCount">0</strong>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-top:4px;">
-        <span>Sample Rate:</span>
-        <strong style="color:var(--text);">1.0 sec</strong>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-top:4px;">
-        <span>Platform:</span>
-        <strong style="color:var(--text);">Windows OS</strong>
-      </div>
-    </div>
-
-    <div class="sidebar-footer">
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:0 4px;">
-        <span>Theme</span>
-        <div class="theme-switch">
-          <button class="theme-switch-btn" data-theme-choice="light">Light</button>
-          <button class="theme-switch-btn" data-theme-choice="dark">Dark</button>
-        </div>
-      </div>
-      <div style="font-size:11px; color:var(--muted); font-family:var(--font-mono); padding:0 4px;">
-        WebSocket: Port 3000
-      </div>
-    </div>
-  </aside>
+  <aside class="sidebar spectra-sidebar" data-spectra-sidebar data-page="live" aria-label="Workspace navigation"></aside>
+  <script src="/sidebar.js"></script>
 
   <!-- Workspace Area -->
   <main class="workspace">
@@ -138,7 +84,6 @@ const state = {};
 const statusEl = document.getElementById("status");
 const eventLogEl = document.getElementById("eventLog");
 const activeCountEl = document.getElementById("activeCount");
-const sidebarActiveCountEl = document.getElementById("sidebarActiveCount");
 const recentEvents = [];
 
 function logEvent(text) {
@@ -151,7 +96,6 @@ function logEvent(text) {
 function updateActiveCount() {
   const count = Object.values(state).filter((s) => s.running).length;
   activeCountEl.textContent = count;
-  if (sidebarActiveCountEl) sidebarActiveCountEl.textContent = count;
 }
 
 function createInitialBuffer(defaultVal = 0) {

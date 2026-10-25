@@ -14,6 +14,8 @@ npm start
 
 Open the [benchmark dashboard](http://127.0.0.1:3000/benchmark.html) to explore the included sample runs. Open the [live console](http://127.0.0.1:3000/) to launch a browser and watch its telemetry. The dashboard binds to the local machine only. Set `PORT` to use another port.
 
+All three pages use the same left navigation and appearance controls. Website-specific views appear as tabs in the workspace. Theme changes stay in sync across open tabs.
+
 The sample CSVs were recorded on **August 22, 2026**. They demonstrate the application and describe that particular machine and test session; they are not current browser rankings.
 
 ## Run benchmarks

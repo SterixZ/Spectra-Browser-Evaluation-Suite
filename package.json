@@ -1,6 +1,6 @@
 {
   "name": "browserperformance",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Spectra: Browser Evaluation Suite \u2014 repeatable browser benchmarks, live telemetry, and statistical comparisons.",
   "main": "dashboard/server.js",
   "scripts": {

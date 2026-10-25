@@ -1,0 +1,78 @@
+.sidebar.spectra-sidebar {
+  --nav-panel: #fff;
+  --nav-text: #182338;
+  --nav-muted: #66758b;
+  --nav-border: #e5eaf1;
+  --nav-active: #2563eb;
+  --nav-soft: #eef4ff;
+  width: 230px;
+  height: 100dvh;
+  padding: 30px 18px 22px;
+  background: var(--nav-panel);
+  border-right: 1px solid var(--nav-border);
+  color: var(--nav-text);
+  font-family: Inter, "Segoe UI", sans-serif;
+  overflow-y: auto;
+}
+[data-theme="dark"] .sidebar.spectra-sidebar {
+  --nav-panel: #141c28;
+  --nav-text: #e9eff8;
+  --nav-muted: #97a6bc;
+  --nav-border: #253143;
+  --nav-active: #79a8ff;
+  --nav-soft: #1c2b42;
+}
+.spectra-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 10px 40px;
+  color: var(--nav-text);
+  text-decoration: none;
+  font-size: 23px;
+  font-weight: 750;
+  letter-spacing: -.7px;
+  flex-shrink: 0;
+}
+.spectra-brand small { display: block; margin-top: 2px; font-size: 10px; font-weight: 450; color: var(--nav-muted); letter-spacing: .15px; }
+.spectra-mark { display: flex; gap: 3px; align-items: flex-end; padding: 10px; height: 39px; border-radius: 11px; background: #2563eb; }
+.spectra-mark i { width: 4px; height: 11px; border-radius: 2px; background: #fff; }
+.spectra-mark i:nth-child(2) { height: 19px; }
+.spectra-mark i:nth-child(3) { height: 15px; }
+.spectra-nav-label { margin: 0 14px 12px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--nav-muted); }
+.spectra-nav { display: flex; flex-direction: column; gap: 4px; }
+.spectra-nav-link { display: flex; align-items: center; gap: 10px; min-height: 43px; padding: 12px; border-radius: 9px; text-decoration: none; font-size: 12px; font-weight: 550; color: var(--nav-muted); }
+.spectra-nav-link svg { flex-shrink: 0; }
+.spectra-nav-link:hover { background: var(--nav-soft); color: var(--nav-text); }
+.spectra-nav-link.active { background: var(--nav-soft); color: var(--nav-active); font-weight: 650; }
+.spectra-local { margin: 34px 10px; font-size: 10px; line-height: 1.7; color: var(--nav-muted); }
+.spectra-local > span { display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #17a576; }
+.spectra-local p { padding: 7px 0 0 13px; }
+.spectra-nav-spacer { flex: 1; min-height: 20px; }
+.spectra-appearance { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--nav-border); padding-top: 18px; font-size: 10px; color: var(--nav-muted); }
+.spectra-sidebar .theme-switch { border: 1px solid var(--nav-border); border-radius: 6px; padding: 2px; background: var(--nav-soft); }
+.spectra-sidebar .theme-switch-btn { padding: 5px 8px; font: 500 10px Inter, "Segoe UI", sans-serif; color: var(--nav-muted); }
+.spectra-sidebar .theme-switch-btn.active { color: var(--nav-text); background: var(--nav-panel); }
+.spectra-sidebar :focus-visible { outline: 3px solid #83b0ff; outline-offset: 3px; }
+.website-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.website-view-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.website-view-link { padding: 8px 12px; border-radius: 7px; text-decoration: none; font: 500 12px var(--font-body); color: var(--muted); }
+.website-view-link:hover { color: var(--text); background: var(--panel-hover); }
+.website-view-link.active { color: var(--accent-light); background: var(--accent-wash); font-weight: 650; }
+.website-run-picker { display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--muted); max-width: 100%; }
+.website-run-picker select { max-width: 100%; }
+@media (max-width: 960px) {
+  .sidebar.spectra-sidebar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; width: 100%; height: auto; padding: 16px 20px; overflow: visible; position: relative; border-right: 0; border-bottom: 1px solid var(--nav-border); }
+  .spectra-brand { margin: 0; font-size: 21px; }
+  .spectra-brand small { font-size: 9px; }
+  .spectra-nav-label, .spectra-local, .spectra-nav-spacer { display: none; }
+  .spectra-nav { grid-column: 1 / -1; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .spectra-nav-link { padding: 9px 10px; min-height: 38px; font-size: 11px; gap: 7px; }
+  .spectra-appearance { grid-column: 2; grid-row: 1; border: 0; padding: 0; }
+  .spectra-appearance > span { display: none; }
+}
+@media (max-width: 600px) {
+  .website-view-tabs { width: 100%; }
+  .website-view-link { flex: 1 0 40%; text-align: center; }
+  .website-run-picker { width: 100%; }
+}

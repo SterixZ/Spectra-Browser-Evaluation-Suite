@@ -11,64 +11,15 @@
 </script>
 <link rel="stylesheet" href="/theme.css" />
 <script src="/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/sidebar.css" />
 </head>
 <body>
 
 <div class="app-layout">
 
   <!-- Left Sidebar Navigation Column -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div>
-        <div class="brand-title">Spectra</div>
-        <div class="brand-sub">Evaluation Suite</div>
-      </div>
-    </div>
-
-    <div class="nav-group-title">Navigation Views</div>
-    <nav class="nav-links">
-      <a href="/" class="nav-item">
-        <span>Live Dashboard</span>
-      </a>
-      <button class="nav-item active" onclick="switchPageView('overview', this)">
-        <span>Overview Scorecard</span>
-      </button>
-      <button class="nav-item" onclick="switchPageView('charts', this)">
-        <span>Visual Charts</span>
-      </button>
-      <button class="nav-item" onclick="switchPageView('table', this)">
-        <span>Comparison & Ratios</span>
-      </button>
-      <button class="nav-item" onclick="switchPageView('logs', this)">
-        <span>Raw Observation Logs</span>
-      </button>
-      <a href="/lab.html" class="nav-item"><span>Benchmark Lab</span></a>
-    </nav>
-
-    <div class="nav-group-title" style="margin-top:24px;">Benchmark Run</div>
-    <div style="padding: 0 4px 10px 4px;">
-      <select id="runSelect" aria-label="Benchmark run" class="theme-select" style="width:100%; font-size:13px;"></select>
-    </div>
-
-    <div class="sidebar-spacer"></div>
-
-    <div class="sidebar-footer">
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; color:var(--muted); padding:0 4px;">
-        <span>Theme</span>
-        <div class="theme-switch">
-          <button class="theme-switch-btn" data-theme-choice="light">Light</button>
-          <button class="theme-switch-btn" data-theme-choice="dark">Dark</button>
-        </div>
-      </div>
-    </div>
-  </aside>
+  <aside class="sidebar spectra-sidebar" data-spectra-sidebar data-page="website" aria-label="Workspace navigation"></aside>
+  <script src="/sidebar.js"></script>
 
   <!-- Main Content Workspace -->
   <main class="workspace">
@@ -83,6 +34,16 @@
         <span class="pill-tag pill-purple" id="runBadge">RUN: LOADING...</span>
         <span class="pill-tag pill-gray" id="testRunsCount">Sample iterations</span>
       </div>
+    </div>
+
+    <div class="website-toolbar">
+      <nav class="website-view-tabs" aria-label="Website test views">
+        <a href="#overview" class="website-view-link active" data-website-view="overview" aria-current="location">Overview</a>
+        <a href="#charts" class="website-view-link" data-website-view="charts">Visual charts</a>
+        <a href="#table" class="website-view-link" data-website-view="table">Comparison &amp; ratios</a>
+        <a href="#logs" class="website-view-link" data-website-view="logs">Raw logs</a>
+      </nav>
+      <label class="website-run-picker">Saved website run<select id="runSelect" aria-label="Benchmark run" class="theme-select"></select></label>
     </div>
 
     <div id="loadStatus" class="load-status" role="status" aria-live="polite" hidden></div>
@@ -397,13 +358,17 @@
     logs: { title: "Raw Observation Logs", desc: "Inspection records and exact metric logs from benchmark CSVs" },
   };
 
-  function switchPageView(viewId, btn) {
+  function switchPageView(viewId) {
     document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('[data-website-view]').forEach(el => {
+      const selected = el.dataset.websiteView === viewId;
+      el.classList.toggle('active', selected);
+      if (selected) el.setAttribute('aria-current', 'location');
+      else el.removeAttribute('aria-current');
+    });
 
     const target = document.getElementById(`view-${viewId}`);
     if (target) target.classList.add('active');
-    if (btn) btn.classList.add('active');
 
     if (pageMeta[viewId]) {
       document.getElementById('pageHeaderTitle').innerText = pageMeta[viewId].title;
@@ -420,7 +385,7 @@
       renderW3CWaterfall();
     }
 
-    window.location.hash = viewId;
+    // The view links update the hash; Back/Forward uses the same renderer.
   }
 
   function getThemeColors() {
@@ -458,11 +423,7 @@
       select.value = runs.includes(requested) ? requested : runs[0];
       select.addEventListener('change', () => loadRun(select.value));
       await loadRun(select.value);
-      const initialHash = window.location.hash.replace('#', '');
-      if (initialHash && document.getElementById(`view-${initialHash}`)) {
-        const matchBtn = Array.from(document.querySelectorAll('.nav-item')).find(b => b.getAttribute('onclick')?.includes(initialHash));
-        switchPageView(initialHash, matchBtn);
-      }
+
     } catch (error) {
       showStatus(`${error.message} Refresh the page to retry.`, true);
       document.getElementById("runBadge").textContent = "UNAVAILABLE";
@@ -1279,6 +1240,12 @@
     });
   }
 
+  function syncWebsiteView() {
+    const requested = window.location.hash.slice(1);
+    switchPageView(Object.hasOwn(pageMeta, requested) ? requested : 'overview');
+  }
+  window.addEventListener("hashchange", syncWebsiteView);
+  window.addEventListener("DOMContentLoaded", syncWebsiteView);
   window.addEventListener("DOMContentLoaded", init);
 </script>
 </body>

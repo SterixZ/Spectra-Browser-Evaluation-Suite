@@ -6,21 +6,12 @@
   <script>try { document.documentElement.dataset.theme = localStorage.getItem('bp-theme') || 'light'; } catch {}</script>
   <link rel="stylesheet" href="/theme.css" /><link rel="stylesheet" href="/lab.css" />
   <script src="/theme-toggle.js" defer></script><script src="/lab.js" defer></script>
+<link rel="stylesheet" href="/sidebar.css" />
 </head>
 <body class="lab-page">
 <div class="app-layout">
-  <aside class="sidebar lab-sidebar">
-    <a class="lab-brand" href="/lab.html"><span class="lab-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Spectra<small>Browser evaluation suite</small></span></a>
-    <div class="lab-nav-label">WORKSPACE</div>
-    <nav class="nav-links" aria-label="Main navigation">
-      <a class="nav-item active" href="/lab.html" aria-current="page"><span aria-hidden="true">▥</span> Browser benchmarks</a>
-      <a class="nav-item" href="/benchmark.html"><span aria-hidden="true">◎</span> Website tests</a>
-      <a class="nav-item" href="/"><span aria-hidden="true">⌁</span> Live monitor</a>
-    </nav>
-    <div class="lab-sidebar-tip"><span class="local-dot"></span> Running on your computer<p>Your saved tests stay on this machine.</p></div>
-    <div class="sidebar-spacer"></div>
-    <div class="lab-theme-row"><span>Appearance</span><div class="theme-switch"><button class="theme-switch-btn" data-theme-choice="light">Light</button><button class="theme-switch-btn" data-theme-choice="dark">Dark</button></div></div>
-  </aside>
+  <aside class="sidebar spectra-sidebar" data-spectra-sidebar data-page="lab" aria-label="Workspace navigation"></aside>
+  <script src="/sidebar.js"></script>
   <main class="workspace lab-workspace">
     <header class="lab-header"><div><div class="lab-breadcrumb">Workspace <span>/</span> Benchmark Lab</div><h1>Browser benchmarks</h1><p>See how your browsers handle everyday tasks and heavier workloads.</p></div><div class="lab-actions"><a id="downloadCsv" class="lab-button" hidden>↓ Export results</a><button class="lab-button primary" id="newRun">＋ New test</button></div></header>
     <div id="labStatus" class="lab-message" role="status" aria-live="polite" hidden></div>

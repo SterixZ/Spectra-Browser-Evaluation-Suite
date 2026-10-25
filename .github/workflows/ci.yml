@@ -26,7 +26,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: node --test test/lab-browser.test.js
+      - run: node --test --test-concurrency=1 test/lab-browser.test.js test/navigation-browser.test.js
         env:
           SPECTRA_BROWSER_SMOKE: '1'
           SPECTRA_SMOKE_BROWSER: ${{ matrix.browser }}
