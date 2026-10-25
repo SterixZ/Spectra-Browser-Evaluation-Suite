@@ -50,7 +50,75 @@ $env:SPEEDOMETER_RUNS = '3'
 npm run bench
 ```
 
-Workload sites and iteration settings are defined separately in `scripts/workload_core.js`.
+Workload sites are defined in `scripts/workload_core.js`. Workloads use `RUNS` by default; set `WORKLOAD_RUNS` to override their iteration count independently. Counts are validated before browsers launch. Set `SPEEDOMETER_RUNS=0` to skip Speedometer deliberately. Legacy archives include milliseconds and a collision suffix so rapid runs preserve every directory.
+
+## Benchmark Lab: seven additional suites
+
+The new [Benchmark Lab](http://127.0.0.1:3000/lab.html) runs controlled local workloads independently of the existing website suites. It supports installed **Chrome** and **Edge**, plus Playwright **Chromium**, **Firefox**, and **WebKit**. WebKit is an engine build, not the Safari application.
+
+| Suite | What it measures |
+| :--- | :--- |
+| `javascript` | Seeded numeric sorting, JSON serialization/parsing, and integer computation |
+| `dom` | Node insertion, style changes, forced layout, and selector queries |
+| `canvas` | Canvas 2D drawing with synchronization, pixel readback, and drawing throughput |
+| `crypto` | SHA-256 hashing duration and binary-payload throughput |
+| `storage` | IndexedDB writes through transaction completion, verified reads, and records/second |
+| `network` | Uncached loopback transfers versus repeated cacheable fetches |
+| `tabs` | Concurrent local-document startup and tabs/second |
+
+These are **Spectra microbenchmarks**, not substitutes for Speedometer, JetStream, MotionMark, or field Web Vitals. Network results measure the local HTTP stack and cache behavior, not internet connection speed. Cache use depends on the browser; the benchmark does not assume every cacheable fetch is a cache hit.
+
+```sh
+# Install just the engine needed for a first local run
+npx playwright install chromium
+npm run bench:lab -- --browsers chromium
+
+# Compare the installed branded browsers and Playwright Firefox
+npm run bench:lab -- --browsers chrome,edge,firefox
+
+# Select a subset and increase sample counts
+npm run bench:lab -- --browsers chromium,firefox --suites javascript,dom,storage --runs 10 --warmup 2
+
+# Larger workloads; optionally show browser windows
+npm run bench:lab -- --profile stress --browsers chromium --headed
+
+# Show available suites without launching browsers
+npm run bench:lab -- --list
+npm run bench:lab -- --help
+```
+
+To use all Playwright engine builds, install them with `npx playwright install chromium firefox webkit`. Linux may also need the browser system dependencies: `npx playwright install --with-deps chromium firefox webkit`.
+
+### Scale and repeat experiments
+
+| Profile | Measured samples per suite/browser | Work size multiplier |
+| :--- | :--- | :--- |
+| `quick` | 3 | 1× |
+| `standard` | 5 | 3× |
+| `stress` | 10 | 8× |
+
+Each profile has one unmeasured warmup per suite/browser. Override these settings with `--runs 1..100`, `--warmup 0..10`, `--scale 1..20`, and `--timeout 1000..300000` (milliseconds per sample). Runs default to headless mode; use `--headed` for visible windows. The planner in Benchmark Lab builds commands and shows the total number of samples before you start.
+
+Browser targets execute **sequentially** to avoid competing for resources. Only the multi-tab suite opens pages concurrently; its load scales from 2 to a maximum of 16 tabs. Suite order rotates between browsers to reduce a consistent first-suite bias. Each sample uses a new, non-persistent context with a fixed 1280 × 800 viewport and device scale factor of 1.
+
+Results are checkpointed to `lab-results/<run-id>/manifest.json` after every attempt. `samples.csv` and `summary.json` are exported when a run finishes or is interrupted. The manifest records workload revision, exact settings, browser versions, operating system, CPU, memory, Node version, and Playwright version.
+
+```sh
+# Resume an interrupted or partially failed experiment using its printed ID
+npm run bench:lab -- --resume <run-id>
+```
+
+Resume preserves successful samples and retries failed, timed-out, or unfinished ones. It retains earlier attempts in the CSV while summaries use only the latest attempt for each sample. Saved settings cannot be overridden during resume; changed environments or browser versions require a new run. A lock prevents concurrent writers from resuming the same experiment.
+
+Set `SPECTRA_RESULTS_DIR` to change the results location; use the same value for the CLI and dashboard server. Experiment manifests and generated screenshots are ignored by Git.
+
+### Compare and export
+
+Start the dashboard with `npm start`, then open **Benchmark Lab**. Choose an experiment and a suite to see a chart, means, confidence intervals, medians, percentiles, and sample history. The page refreshes running experiments, paginates saved runs and sample history, filters samples by browser, and downloads all attempts as CSV. Run URLs can be bookmarked locally.
+
+Missing APIs, timeouts, and browser-launch failures have explicit statuses and never become invented zero scores. A single sample has no confidence estimate. Compare results only when workload revision, size, browser mode, and machine conditions match. Hardware acceleration and headless operation can materially affect graphics timings. Background activity, thermal changes, and timer precision still affect these synthetic measurements.
+
+Implementation references: [Playwright browser engines](https://playwright.dev/docs/browsers), [isolated browser contexts](https://playwright.dev/docs/api/class-browsercontext), and [IndexedDB transaction completion](https://developer.mozilla.org/en-US/docs/Web/API/IDBTransaction/complete_event).
 
 ## Explore and analyze results
 
@@ -94,9 +162,19 @@ npm run check
 npm test
 ```
 
-`check` validates JavaScript syntax, including inline dashboard scripts. The Node test suite covers CSV edge cases, statistical reference values, workload aggregation, ranking and log rendering, HTTP endpoints, and malformed WebSocket messages. GitHub Actions runs both checks on pushes and pull requests. No browser installation is needed for these regression tests.
+`check` validates JavaScript syntax, including inline dashboard scripts. The Node test suite covers CSV edge cases, statistical reference values, workload aggregation, ranking and log rendering, HTTP endpoints, and malformed WebSocket messages. GitHub Actions runs both checks on pushes and pull requests. No browser installation is needed for these regression tests. CI also runs the real-browser smoke test separately in Chromium, Firefox, and WebKit, including all seven Lab suites and the desktop/mobile dashboard.
 
-Full benchmark runs launch installed browsers and contact public websites. They are separate from the automated regression suite.
+The real-browser smoke test can also run locally. In PowerShell:
+
+```powershell
+$env:SPECTRA_BROWSER_SMOKE = '1'
+$env:SPECTRA_SMOKE_BROWSER = 'chromium'
+node --test test/lab-browser.test.js
+Remove-Item Env:SPECTRA_BROWSER_SMOKE
+Remove-Item Env:SPECTRA_SMOKE_BROWSER
+```
+
+Smoke tests generate desktop/mobile screenshots in `test-results/`. Lab suites use only their temporary local fixture server. The legacy website benchmarks contact public websites and remain separate from the regression suite.
 
 ## Project layout
 
@@ -113,9 +191,18 @@ scripts/
   analyze.js          Command-line reporting
   bench_browser_core.js
   workload_core.js    Standard and workload collection engines
+  bench_lab.js        Configurable Lab command line
+  lab/
+    catalog.js        Suite definitions and metric units
+    cases.js          Browser-side workloads and result validation
+    runner.js         Warmups, timeouts, isolation, checkpoints, and resume
+    store.js          Atomic manifests, compact discovery metadata, summaries, CSV
+    fixture-server.js Local deterministic documents and binary payloads
+    api.js            Paginated read-only Lab endpoints
 test/                 Regression and API tests
 results_*/            Included standard sample run
 workloads_*/          Included workload sample run
+lab-results/          Generated local experiments (ignored by Git)
 ```
 
 Presentation decks, PDF reports, ZIP/source archives, local environment files, dependencies, and in-progress results are ignored by Git. The original local presentation and report files remain on disk.

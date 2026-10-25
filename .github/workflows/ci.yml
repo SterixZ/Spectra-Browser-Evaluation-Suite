@@ -12,3 +12,26 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+  browser-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: node --test test/lab-browser.test.js
+        env:
+          SPECTRA_BROWSER_SMOKE: '1'
+          SPECTRA_SMOKE_BROWSER: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-${{ matrix.browser }}
+          path: test-results/

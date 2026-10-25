@@ -7,6 +7,7 @@ const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const { performance } = require("perf_hooks");
+const { archiveRunDirectory } = require("./archive");
 const { execSync } = require("child_process");
 const {
   RESULTS_DIR,
@@ -344,18 +345,7 @@ function checkAndArchiveResultsDir() {
 
   const allThree = ["chrome", "edge", "firefox"].every((b) => recordedBrowsers.has(b));
   if (allThree) {
-    const date = new Date();
-    const timestamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-      date.getDate()
-    ).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
-    const projectRoot = path.dirname(RESULTS_DIR);
-    let finalDir = path.join(projectRoot, `results_${timestamp}`);
-
-    if (fs.existsSync(finalDir)) {
-      finalDir = path.join(projectRoot, `results_${timestamp}_${String(date.getSeconds()).padStart(2, "0")}`);
-    }
-
-    fs.renameSync(RESULTS_DIR, finalDir);
+    const finalDir = archiveRunDirectory(RESULTS_DIR);
     console.log(`\n🎉 ALL 3 BROWSERS COMPLETE!`);
     console.log(`📦 Archived full results to: ${finalDir}`);
     console.log(`📁 Subsequent runs will create a fresh results/ directory.\n`);

@@ -9,6 +9,7 @@ const express = require("express");
 const { WebSocketServer } = require("ws");
 const { chromium, firefox } = require("playwright");
 const { getBenchmarkData, listRunFolders, listWorkloadFolders, getWorkloadData } = require("../scripts/results");
+const { createLabRouter } = require("../scripts/lab/api");
 
 const TICK_MS = 1000;
 
@@ -135,6 +136,7 @@ async function tick(name) {
 const app = express();
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/api/lab", createLabRouter());
 
 app.get("/api/runs", (req, res) => {
   res.json({ runs: listRunFolders(), workloads: listWorkloadFolders() });

@@ -6,11 +6,12 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { performance } = require("perf_hooks");
+const { archiveRunDirectory } = require("./archive");
 const { execSync } = require("child_process");
 const { getLaunchers } = require("./browsers");
 const { computeDescriptiveStats } = require("./stats");
 
-const ITERATIONS = 3;
+const { WORKLOAD_RUNS: ITERATIONS } = require("./config");
 const INTER_SITE_DELAY_MS = 1000;
 const INTER_ITERATION_DELAY_MS = 2000;
 const POST_LOAD_STABILIZE_MS = 1500;
@@ -209,18 +210,7 @@ function checkAndArchiveWorkloadsDir(workloadsDir) {
     fs.writeFileSync(path.join(workloadsDir, "workload_summary.csv"), summaryRows.join("\n") + "\n");
     fs.writeFileSync(path.join(workloadsDir, "workload_comparison.csv"), comparisonRows.join("\n") + "\n");
 
-    const date = new Date();
-    const timestamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-      date.getDate()
-    ).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
-    const projectRoot = path.dirname(workloadsDir);
-    let finalDir = path.join(projectRoot, `workloads_${timestamp}`);
-
-    if (fs.existsSync(finalDir)) {
-      finalDir = path.join(projectRoot, `workloads_${timestamp}_${String(date.getSeconds()).padStart(2, "0")}`);
-    }
-
-    fs.renameSync(workloadsDir, finalDir);
+    const finalDir = archiveRunDirectory(workloadsDir);
     console.log(`\n🎉 ALL 3 BROWSERS COMPLETE IN WORKLOADS!`);
     console.log(`📦 Generated summary matrices and archived to: ${finalDir}`);
     console.log(`📁 Subsequent runs will create a fresh workloads/ directory.\n`);

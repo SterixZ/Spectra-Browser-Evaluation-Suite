@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Benchmark Lab — Spectra</title>
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem('bp-theme') || 'light'; } catch {}</script>
+  <link rel="stylesheet" href="/theme.css" />
+  <link rel="stylesheet" href="/lab.css" />
+  <script src="/chart.umd.min.js" defer></script>
+  <script src="/theme-toggle.js" defer></script>
+  <script src="/lab.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-icon">S</div><div><div class="brand-title">Spectra</div><div class="brand-sub">Evaluation Suite</div></div></div>
+      <div class="nav-group-title">Navigation Views</div>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-item" href="/">Live Dashboard</a>
+        <a class="nav-item" href="/benchmark.html">Website Benchmarks</a>
+        <a class="nav-item active" href="/lab.html" aria-current="page">Benchmark Lab</a>
+      </nav>
+      <label class="nav-group-title" for="labRun">Saved Experiment</label>
+      <select id="labRun" class="theme-select" aria-label="Saved experiment"></select>
+      <div class="lab-actions"><button id="newerRuns" class="pill-btn" disabled>Newer</button><button id="olderRuns" class="pill-btn" disabled>Older</button></div>
+      <p class="lab-muted" id="runRange"></p>
+      <button id="refreshRuns" class="pill-btn">Refresh runs</button>
+      <div class="sidebar-spacer"></div>
+      <div class="theme-switch" aria-label="Color theme"><button class="theme-switch-btn" data-theme-choice="light">Light</button><button class="theme-switch-btn" data-theme-choice="dark">Dark</button></div>
+    </aside>
+    <main class="workspace lab-workspace">
+      <header class="header-bar"><div><div class="lab-eyebrow">CONTROLLED · LOCAL · REPEATABLE</div><h1 class="header-title">Benchmark Lab</h1><p class="header-desc">Explore the engines behind the browser, one workload at a time.</p></div><span id="runStatus" class="pill-tag pill-purple">READY</span></header>
+      <div id="labStatus" class="load-status" role="status" aria-live="polite" hidden></div>
+
+      <details class="card lab-planner" id="planner">
+        <summary>Plan a benchmark run <span class="lab-muted">Choose a profile, browsers, and suites</span></summary>
+        <div class="lab-form-grid">
+          <label>Profile<select id="planProfile" class="theme-select"><option value="quick">Quick · small workloads</option><option value="standard">Standard · more repetitions</option><option value="stress">Stress · larger workloads</option></select></label>
+          <label>Samples per suite<input id="planRuns" class="theme-input" type="number" min="1" max="100" value="3" /></label>
+          <label>Work size multiplier<input id="planScale" class="theme-input" type="number" min="1" max="20" value="1" /></label>
+          <label>Warmup samples<input id="planWarmup" class="theme-input" type="number" min="0" max="10" value="1" /></label>
+        </div>
+        <fieldset><legend>Browsers</legend><div id="planBrowsers" class="lab-checks"></div></fieldset>
+        <fieldset><legend>Benchmark suites</legend><div id="planSuites" class="lab-checks"></div></fieldset>
+        <label class="lab-checkbox"><input id="planHeaded" type="checkbox" /> Show browser windows (headed mode)</label>
+        <p class="lab-muted" id="planEstimate"></p>
+        <label for="planCommand">Run this command in the project terminal</label>
+        <textarea id="planCommand" readonly rows="3" spellcheck="false"></textarea>
+        <div class="lab-actions"><button id="copyCommand" class="pill-btn primary">Copy command</button><span id="copyStatus" role="status" class="lab-muted"></span></div>
+      </details>
+
+      <section id="emptyLab" class="card lab-empty" hidden>
+        <div class="lab-eyebrow">YOUR NEXT EXPERIMENT STARTS HERE</div><h2>No lab runs yet</h2>
+        <p>Plan a run above, execute the command, then refresh this page. Seven local suites are ready to test JavaScript, layout, graphics, cryptography, storage, caching, and multi-tab loading.</p>
+        <p class="lab-muted">Existing website and workload results remain available in Website Benchmarks.</p>
+      </section>
+
+      <div id="experiment" hidden>
+        <section class="lab-kpis" aria-label="Experiment summary">
+          <div class="card"><span>Successful samples</span><strong id="sampleCount">—</strong><small id="pendingCount"></small></div>
+          <div class="card"><span>Browsers tested</span><strong id="browserCount">—</strong><small id="browserNames"></small></div>
+          <div class="card"><span>Benchmark suites</span><strong id="suiteCount">—</strong><small id="workScale"></small></div>
+          <div class="card"><span>Failed / timed out</span><strong id="failureCount">—</strong><small id="unsupportedCount"></small></div>
+        </section>
+        <section class="card lab-metadata"><h2>Experiment conditions</h2><p id="experimentInfo"></p><p id="machineInfo" class="lab-muted"></p><p id="versionsInfo" class="lab-muted"></p><a id="downloadCsv" class="pill-btn primary">Download all attempts as CSV</a></section>
+        <section class="card">
+          <div class="lab-section-heading"><div><h2>Workload comparison</h2><p class="lab-muted" id="suiteDescription"></p></div><div class="lab-actions"><label for="suiteSelect" class="sr-label">Benchmark suite</label><select id="suiteSelect" class="theme-select"></select><label for="metricSelect" class="sr-label">Chart metric</label><select id="metricSelect" class="theme-select"></select></div></div>
+          <p id="chartDescription" class="lab-muted"></p>
+          <div class="lab-chart"><canvas id="labChart" role="img" aria-label="Mean benchmark result by browser; exact values are in the table below"></canvas><p id="chartEmpty" hidden>No successful measurements for this metric.</p></div>
+          <div class="table-scroll"><table><thead><tr><th>Browser</th><th>Metric</th><th>Mean</th><th>95% CI ±</th><th>Median</th><th>P95</th><th>Samples</th></tr></thead><tbody id="labSummary"></tbody></table></div>
+          <p class="lab-footnote">Each chart compares one metric within this experiment. A single sample has no confidence estimate. Timings from different workload sizes or browser modes are not interchangeable.</p>
+        </section>
+        <section class="card">
+          <div class="lab-section-heading"><div><h2>Sample history</h2><p class="lab-muted">Latest attempt for each sample. The CSV includes earlier failed attempts.</p></div><div class="lab-actions"><label for="browserFilter" class="sr-label">Filter samples by browser</label><select id="browserFilter" class="theme-select"><option value="">All browsers</option></select></div></div>
+          <div class="table-scroll"><table><thead><tr><th>Browser</th><th>Suite</th><th>Sample</th><th>Attempt</th><th>Status</th><th>Measurements / error</th></tr></thead><tbody id="labSamples"></tbody></table></div>
+          <div class="lab-pagination"><button id="previousSamples" class="pill-btn" disabled>Previous samples</button><span id="sampleRange" class="lab-muted"></span><button id="nextSamples" class="pill-btn" disabled>Next samples</button></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
