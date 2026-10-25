@@ -2,35 +2,7 @@
 // Direct implementation of Raj K. Jain, "The Art of Computer Systems Performance Analysis"
 // Covers Chapters 3 (Metrics), 11 & 12 (Summaries & Distributions), 13 & 14 (Comparing 2 Alternatives), 20 (ANOVA)
 
-// Student's t critical values for 90%, 95%, 99% CI (two-tailed)
-const T_TABLE = {
-  90: {
-    1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015,
-    6: 1.943, 7: 1.895, 8: 1.860, 9: 1.833, 10: 1.812,
-    15: 1.753, 20: 1.725, 25: 1.708, 30: 1.697
-  },
-  95: {
-    1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
-    6: 2.447,  7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
-    15: 2.131, 20: 2.086, 25: 2.060, 30: 2.042
-  },
-  99: {
-    1: 63.657, 2: 9.925, 3: 5.841, 4: 4.604, 5: 4.032,
-    6: 3.707,  7: 3.499, 8: 3.355, 9: 3.250, 10: 3.169,
-    15: 2.947, 20: 2.845, 25: 2.787, 30: 2.750
-  }
-};
-
-function getTCritical(df, confidence = 95) {
-  const rounded = Math.max(1, Math.round(df));
-  const table = T_TABLE[confidence] || T_TABLE[95];
-  if (rounded >= 30) {
-    if (confidence === 90) return 1.645;
-    if (confidence === 99) return 2.576;
-    return 1.960;
-  }
-  return table[rounded] || 1.960;
-}
+const { tCritical: getTCritical, fSurvival } = require("./distributions");
 
 // Percentile computation with linear interpolation (Jain Ch. 11)
 function quantile(sortedArr, q) {
@@ -47,7 +19,7 @@ function quantile(sortedArr, q) {
 
 // Full univariate statistical evaluation (Jain Ch. 11 & 13)
 function computeDescriptiveStats(rawValues) {
-  const values = rawValues.filter((v) => typeof v === "number" && !isNaN(v));
+  const values = rawValues.filter((v) => Number.isFinite(v));
   const n = values.length;
   if (n === 0) {
     return {
@@ -158,11 +130,13 @@ function compareTwoAlternatives(sampleA, sampleB, labelA = "A", labelB = "B") {
   const ciLower = diffMean - marginOfError;
   const ciUpper = diffMean + marginOfError;
 
-  // If 95% CI does not contain zero => Statistically significant difference
-  const isSignificant = (ciLower > 0 && ciUpper > 0) || (ciLower < 0 && ciUpper < 0);
+  // Constant samples contain no variance estimate for inference.
+  const isSignificant = seDiff > 0 && ( (ciLower > 0 && ciUpper > 0) || (ciLower < 0 && ciUpper < 0));
 
   let summary;
-  if (!isSignificant) {
+  if (seDiff === 0) {
+    summary = "No observed variance; statistical significance cannot be estimated.";
+  } else if (!isSignificant) {
     summary = `Difference is within experimental noise (95% CI includes 0).`;
   } else if (diffMean < 0) {
     summary = `${labelA} is faster/lower than ${labelB} by ${Math.abs(diffMean).toFixed(1)} (95% CI: [${ciLower.toFixed(1)}, ${ciUpper.toFixed(1)}]).`;
@@ -186,7 +160,7 @@ function compareTwoAlternatives(sampleA, sampleB, labelA = "A", labelB = "B") {
 
 // One-Way ANOVA across K Alternatives (Jain Ch. 20)
 function computeOneWayAnova(groups) {
-  const names = Object.keys(groups);
+  const names = Object.keys(groups).filter(name => (groups[name] || []).some(Number.isFinite));
   const k = names.length;
   if (k < 2) return { isSignificant: false, fStat: 0, summary: "Need at least 2 browsers for ANOVA." };
 
@@ -195,7 +169,7 @@ function computeOneWayAnova(groups) {
   const stats = {};
 
   for (const name of names) {
-    const vals = (groups[name] || []).filter((v) => typeof v === "number" && !isNaN(v));
+    const vals = (groups[name] || []).filter((v) => Number.isFinite(v));
     const n = vals.length;
     const sum = vals.reduce((a, b) => a + b, 0);
     const mean = n > 0 ? sum / n : 0;
@@ -222,15 +196,16 @@ function computeOneWayAnova(groups) {
   const dfW = totalN - k;
   const msb = dfB > 0 ? ssb / dfB : 0;
   const msw = dfW > 0 ? ssw / dfW : 0;
-  const fStat = msw > 0 ? msb / msw : 0;
+  const fStat = msw > 0 ? msb / msw : (msb > 0 ? Infinity : 0);
 
-  // Approximate F-critical for alpha = 0.05
-  const isSignificant = fStat > 3.35;
+  const pValue = fSurvival(fStat, dfB, dfW);
+  const isSignificant = pValue < 0.05;
 
   return {
-    fStat: Number(fStat.toFixed(2)),
+    fStat: Number.isFinite(fStat) ? Number(fStat.toFixed(2)) : null,
     dfB,
     dfW,
+    pValue,
     isSignificant,
     summary: isSignificant
       ? `Statistically significant browser variance confirmed (F = ${fStat.toFixed(2)}, p < 0.05).`

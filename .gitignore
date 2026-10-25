@@ -1,3 +1,23 @@
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Local reports, presentation decks, and source archives
+*.[pP][pP][tT]
+*.[pP][pP][tT][xXmM]
+*.[pP][oO][tT][xXmM]
+*.[pP][pP][sS]*
+*.[pP][dD][fF]
+*.zip
+*.tar.gz
+
+# Machine-local settings and generated output
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+test-results/
+playwright-report/
+results/
+workloads/

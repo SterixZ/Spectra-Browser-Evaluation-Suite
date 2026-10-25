@@ -145,8 +145,8 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
       }
     });
 
+    const monitor = new NavigationTelemetryMonitor(browserInfo.process, 300);
     try {
-      const monitor = new NavigationTelemetryMonitor(browserInfo.process, 300);
       monitor.start();
 
       const navStart = performance.now();
@@ -246,6 +246,7 @@ async function runCoreMetrics(browserInfo, run, metricsCsv, pageloadCsv, network
     } catch {
       console.log(`  ${url}: failed to load, skipping`);
     } finally {
+      if (monitor.running) monitor.stop();
       await page.close().catch(() => {});
     }
   }

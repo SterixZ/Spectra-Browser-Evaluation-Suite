@@ -5,13 +5,14 @@
 const THEME_KEY = 'bp-theme';
 
 function getStoredTheme() {
-  const saved = localStorage.getItem(THEME_KEY);
+  let saved;
+  try { saved = localStorage.getItem(THEME_KEY); } catch {}
   return saved === 'dark' ? 'dark' : 'light';
 }
 
 function applyTheme(mode) {
   document.documentElement.setAttribute('data-theme', mode);
-  localStorage.setItem(THEME_KEY, mode);
+  try { localStorage.setItem(THEME_KEY, mode); } catch {}
   document.querySelectorAll('.theme-switch-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.themeChoice === mode);
   });

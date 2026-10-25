@@ -324,8 +324,8 @@ async function runWorkloadForBrowsers(targetNames = ["Chrome", "Edge", "Firefox"
             }
           });
 
+          const monitor = new NavigationTelemetryMonitor(browserInfo.process, 300);
           try {
-            const monitor = new NavigationTelemetryMonitor(browserInfo.process, 300);
             monitor.start();
 
             const startNav = performance.now();
@@ -445,6 +445,7 @@ async function runWorkloadForBrowsers(targetNames = ["Chrome", "Edge", "Firefox"
           } catch (err) {
             console.log(`      • ${site.name.padEnd(22)} | Timeout/Skipped (${err.message.slice(0, 30)})`);
           } finally {
+            if (monitor.running) monitor.stop();
             await page.close().catch(() => {});
             await sleep(INTER_SITE_DELAY_MS);
           }

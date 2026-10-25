@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Spectra — Systems Evaluation Suite</title>
 <script>
-  document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
+  try {
+    document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
+  } catch { document.documentElement.setAttribute('data-theme', 'light'); }
 </script>
 <link rel="stylesheet" href="/theme.css" />
 <script src="/chart.umd.min.js"></script>
@@ -51,7 +53,7 @@
 
     <div class="nav-group-title" style="margin-top:24px;">Benchmark Run</div>
     <div style="padding: 0 4px 10px 4px;">
-      <select id="runSelect" class="theme-select" style="width:100%; font-size:13px;"></select>
+      <select id="runSelect" aria-label="Benchmark run" class="theme-select" style="width:100%; font-size:13px;"></select>
     </div>
 
     <div class="sidebar-spacer"></div>
@@ -82,6 +84,8 @@
       </div>
     </div>
 
+    <div id="loadStatus" class="load-status" role="status" aria-live="polite" hidden></div>
+
     <!-- ================================================================= -->
     <!-- PAGE 1: EXECUTIVE OVERVIEW SCORECARD VIEW -->
     <!-- ================================================================= -->
@@ -89,7 +93,7 @@
       <!-- Winner Hero Card -->
       <div class="hero-winner-card">
         <div>
-          <div class="winner-badge">Overall Top Performer</div>
+          <div class="winner-badge">Most Core Metric Wins</div>
           <div class="winner-heading" id="winnerHeadline">Analyzing Benchmark Results...</div>
           <div class="winner-text" id="winnerText">
             Evaluating multi-dimensional performance across Startup Time, Response Time, Reaction Time, and System Resource Efficiency.
@@ -426,32 +430,55 @@
     };
   }
 
+  let runController;
+  function showStatus(message, error = false) {
+    const status = document.getElementById("loadStatus");
+    status.textContent = message;
+    status.hidden = !message;
+    status.classList.toggle("error", error);
+  }
+
   async function init() {
-    const res = await fetch("/api/runs");
-    const { runs } = await res.json();
     const select = document.getElementById("runSelect");
-
-    if (runs && runs.length) {
-      select.innerHTML = runs.map(r => `<option value="${r}">${r}</option>`).join("");
-      const params = new URLSearchParams(window.location.search);
-      const requested = params.get('dir') || runs[0];
+    try {
+      const res = await fetch("/api/runs");
+      if (!res.ok) throw new Error("Could not connect to the results server.");
+      const { runs } = await res.json();
+      if (!runs?.length) {
+        select.disabled = true;
+        document.getElementById("runBadge").textContent = "NO RUNS YET";
+        document.getElementById("winnerHeadline").textContent = "Ready for your first benchmark";
+        document.getElementById("winnerText").textContent = "Run npm run bench, then refresh this page to compare your results.";
+        showStatus("No saved runs found. Run a benchmark to get started.");
+        return;
+      }
+      select.replaceChildren(...runs.map(run => new Option(run, run)));
+      const requested = new URLSearchParams(window.location.search).get('dir');
       select.value = runs.includes(requested) ? requested : runs[0];
-
       select.addEventListener('change', () => loadRun(select.value));
       await loadRun(select.value);
-    }
-
-    const initialHash = window.location.hash.replace('#', '');
-    if (initialHash && document.getElementById(`view-${initialHash}`)) {
-      const matchBtn = Array.from(document.querySelectorAll('.nav-item')).find(b => b.getAttribute('onclick')?.includes(initialHash));
-      switchPageView(initialHash, matchBtn);
+      const initialHash = window.location.hash.replace('#', '');
+      if (initialHash && document.getElementById(`view-${initialHash}`)) {
+        const matchBtn = Array.from(document.querySelectorAll('.nav-item')).find(b => b.getAttribute('onclick')?.includes(initialHash));
+        switchPageView(initialHash, matchBtn);
+      }
+    } catch (error) {
+      showStatus(`${error.message} Refresh the page to retry.`, true);
+      document.getElementById("runBadge").textContent = "UNAVAILABLE";
     }
   }
 
   async function loadRun(dir) {
+    runController?.abort();
+    const controller = new AbortController();
+    runController = controller;
+    showStatus("Loading benchmark results…");
+    document.querySelector(".workspace").setAttribute("aria-busy", "true");
     try {
-      const res = await fetch(`/api/benchmark?dir=${encodeURIComponent(dir)}`);
+      const res = await fetch(`/api/benchmark?dir=${encodeURIComponent(dir)}`, { signal: controller.signal });
+      if (!res.ok) throw new Error("This run could not be loaded. Select another run or refresh to retry.");
       const { data, dir: loadedDir } = await res.json();
+      if (controller.signal.aborted) return;
       benchmarkData = data;
       rawCsvData = data.raw || {};
 
@@ -480,8 +507,14 @@
       const url = new URL(window.location);
       url.searchParams.set('dir', loadedDir);
       window.history.replaceState({}, '', url);
+      showStatus("");
     } catch (err) {
-      console.error("Failed to load run:", err);
+      if (err.name !== "AbortError") {
+        showStatus(err.message, true);
+        document.getElementById("runBadge").textContent = "LOAD FAILED";
+      }
+    } finally {
+      if (runController === controller) document.querySelector(".workspace").setAttribute("aria-busy", "false");
     }
   }
 
@@ -495,22 +528,32 @@
     select.value = browsers.includes(current) ? current : browsers[0];
   }
 
+  function coreRanking(summary) {
+    const browsers = Object.keys(summary);
+    const wins = Object.fromEntries(browsers.map(browser => [browser, 0]));
+    const best = {};
+    for (const metric of ["startup", "cpu", "memory"]) {
+      const measured = browsers.filter(browser => summary[browser][metric].n > 0);
+      if (!measured.length) continue;
+      const minimum = Math.min(...measured.map(browser => summary[browser][metric].mean));
+      const leaders = measured.filter(browser => summary[browser][metric].mean === minimum);
+      leaders.forEach(browser => wins[browser]++);
+      best[metric] = leaders.join(" / ");
+    }
+    const ranked = [...browsers].sort((a, b) => wins[b] - wins[a]);
+    return { wins, best, ranked };
+  }
+
   function renderOverview(data) {
     const { summary, workloads } = data;
     const browsers = Object.keys(summary);
     if (!browsers.length) return;
 
-    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
-    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
-    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
-
-    const wins = {};
-    browsers.forEach(b => wins[b] = 0);
-    if (summary[bestStartup]?.startup.mean > 0) wins[bestStartup]++;
-    if (summary[bestCpu]?.cpu.mean > 0) wins[bestCpu]++;
-    if (summary[bestMem]?.memory.mean > 0) wins[bestMem]++;
-
-    const overallWinner = [...browsers].sort((a,b) => wins[b] - wins[a])[0];
+    const { wins, best, ranked } = coreRanking(summary);
+    const bestStartup = best.startup || "No data";
+    const bestCpu = best.cpu || "No data";
+    const bestMem = best.memory || "No data";
+    const overallWinner = ranked.filter(browser => wins[browser] === wins[ranked[0]]).join(" / ");
 
     if (workloads && workloads.comparison && workloads.comparison.length) {
       const sortedByInflation = [...workloads.comparison].sort((a, b) => (parseFloat(a.LoadInflationRatio) || 99) - (parseFloat(b.LoadInflationRatio) || 99));
@@ -528,10 +571,10 @@
         <span class="pill-tag pill-purple">Fastest Startup: ${bestStartup}</span>
       `;
     } else {
-      document.getElementById("winnerHeadline").innerText = `${overallWinner} is the Top Performer Overall`;
+      document.getElementById("winnerHeadline").innerText = `${overallWinner} Leads the Core Metrics`;
       document.getElementById("winnerText").innerHTML = `
         <strong>${overallWinner}</strong> achieved the optimal balance of fast execution and system efficiency.
-        It demonstrated the fastest cold startup time (${summary[bestStartup]?.startup.mean.toFixed(0) || 0} ms) and solid resource utilization.
+        ${bestStartup} recorded the fastest measured cold startup. Rankings describe this run only.
       `;
 
       document.getElementById("winnerChips").innerHTML = `
@@ -541,78 +584,34 @@
       `;
     }
 
-    const sampleN = summary[overallWinner]?.startup.n || summary[overallWinner]?.pageload.n || 5;
+    const sampleN = Math.max(...browsers.map(browser => summary[browser].startup.n));
     document.getElementById("testRunsCount").innerText = `${sampleN} sample iterations`;
   }
 
   function renderCards(summary) {
     const browsers = Object.keys(summary);
-    if (!browsers.length) return;
-
-    const buildMiniCompare = (key, unit, isMaxBetter = false) => {
-      const sorted = [...browsers].sort((a, b) =>
-        isMaxBetter ? summary[b][key].mean - summary[a][key].mean : summary[a][key].mean - summary[b][key].mean
-      );
-      return sorted.map((b, idx) => {
-        const s = summary[b][key];
-        if (!s || s.n === 0) return '';
-        const rank = idx === 0 ? '#1 ' : `#${idx+1} `;
-        return `
-          <div class="compare-row">
-            <span class="compare-name">${rank}${b}</span>
-            <span class="compare-val">${s.mean.toFixed(1)} ${unit}</span>
-          </div>
-        `;
-      }).join('');
-    };
-
-    // 1. Startup Speed
-    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
-    const s = summary[bestStartup].startup;
-    document.getElementById("startupWinnerBadge").innerText = `Fastest: ${bestStartup}`;
-    document.getElementById("startupMainVal").innerText = s.mean.toFixed(0);
-    document.getElementById("startupCompareList").innerHTML = buildMiniCompare('startup', 'ms');
-
-    // 2. CPU Usage
-    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
-    const c = summary[bestCpu].cpu;
-    document.getElementById("cpuWinnerBadge").innerText = `Lowest: ${bestCpu}`;
-    document.getElementById("cpuMainVal").innerText = c.mean.toFixed(1);
-    document.getElementById("cpuCompareList").innerHTML = buildMiniCompare('cpu', '%');
-
-    // 3. Memory Usage
-    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
-    const m = summary[bestMem].memory;
-    document.getElementById("memWinnerBadge").innerText = `Lowest: ${bestMem}`;
-    document.getElementById("memMainVal").innerText = m.mean.toFixed(0);
-    document.getElementById("memCompareList").innerHTML = buildMiniCompare('memory', 'MB');
-
-    // 4. Execution Speed (Speedometer) or Reaction Time (TTFB)
-    const hasSpeedometer = browsers.some(b => summary[b]?.speedometer?.n > 0);
-    const hasTtfb = browsers.some(b => summary[b]?.ttfb?.n > 0);
-
-    if (hasSpeedometer) {
-      const bestSpeed = [...browsers].sort((a,b) => (summary[b].speedometer.geoMean || summary[b].speedometer.mean) - (summary[a].speedometer.geoMean || summary[a].speedometer.mean))[0];
-      const sp = summary[bestSpeed].speedometer;
-      document.getElementById("speedLabel").innerText = "Execution Speed";
-      document.getElementById("speedUnit").innerText = "pts";
-      document.getElementById("speedSubtext").innerText = "Speedometer 3.0 composite benchmark score";
-      document.getElementById("speedWinnerBadge").innerText = `Top: ${bestSpeed}`;
-      document.getElementById("speedMainVal").innerText = sp.geoMean ? sp.geoMean.toFixed(1) : sp.mean.toFixed(1);
-      document.getElementById("speedCompareList").innerHTML = buildMiniCompare('speedometer', 'pts', true);
-    } else if (hasTtfb) {
-      const bestTtfb = [...browsers].sort((a,b) => summary[a].ttfb.mean - summary[b].ttfb.mean)[0];
-      const t = summary[bestTtfb].ttfb;
-      document.getElementById("speedLabel").innerText = "Reaction Time";
-      document.getElementById("speedUnit").innerText = "ms";
-      document.getElementById("speedSubtext").innerText = "Time to First Byte (TTFB) server reaction";
-      document.getElementById("speedWinnerBadge").innerText = `Fastest: ${bestTtfb}`;
-      document.getElementById("speedMainVal").innerText = t.mean.toFixed(0);
-      document.getElementById("speedCompareList").innerHTML = buildMiniCompare('ttfb', 'ms', false);
-    } else {
-      document.getElementById("speedMainVal").innerText = "—";
-      document.getElementById("speedCompareList").innerHTML = "<div class='muted' style='font-size:12px;'>No benchmark data</div>";
+    function fillCard(key, prefix, unit, decimals = 0, higherIsBetter = false) {
+      const sorted = browsers.filter(browser => summary[browser][key]?.n > 0).sort((a, b) =>
+        (summary[a][key].mean - summary[b][key].mean) * (higherIsBetter ? -1 : 1));
+      const badge = document.getElementById(`${prefix}WinnerBadge`);
+      const value = document.getElementById(`${prefix}MainVal`);
+      const list = document.getElementById(`${prefix}CompareList`);
+      if (!sorted.length) {
+        badge.textContent = "No observations"; value.textContent = "—";
+        list.textContent = "No benchmark data"; return;
+      }
+      badge.textContent = `${higherIsBetter ? "Top" : "Lowest"}: ${sorted[0]}`;
+      value.textContent = summary[sorted[0]][key].mean.toFixed(decimals);
+      list.innerHTML = sorted.map((browser, index) => `<div class="compare-row"><span class="compare-name">#${index + 1} ${browser}</span><span class="compare-val">${summary[browser][key].mean.toFixed(1)} ${unit}</span></div>`).join("");
     }
+    fillCard("startup", "startup", "ms");
+    fillCard("cpu", "cpu", "%", 1);
+    fillCard("memory", "mem", "MB");
+    const hasSpeedometer = browsers.some(browser => summary[browser].speedometer.n > 0);
+    document.getElementById("speedLabel").textContent = hasSpeedometer ? "Execution Speed" : "Reaction Time";
+    document.getElementById("speedUnit").textContent = hasSpeedometer ? "pts" : "ms";
+    document.getElementById("speedSubtext").textContent = hasSpeedometer ? "Speedometer composite score (arithmetic mean)" : "Time to first byte (TTFB)";
+    fillCard(hasSpeedometer ? "speedometer" : "ttfb", "speed", hasSpeedometer ? "pts" : "ms", hasSpeedometer ? 1 : 0, hasSpeedometer);
   }
 
   function renderTable(summary) {
@@ -620,34 +619,25 @@
     const browsers = Object.keys(summary);
     if (!tbody || !browsers.length) return;
 
-    const bestStartup = [...browsers].sort((a,b) => summary[a].startup.mean - summary[b].startup.mean)[0];
-    const bestCpu = [...browsers].sort((a,b) => summary[a].cpu.mean - summary[b].cpu.mean)[0];
-    const bestMem = [...browsers].sort((a,b) => summary[a].memory.mean - summary[b].memory.mean)[0];
-
-    const wins = {};
-    browsers.forEach(b => wins[b] = 0);
-    wins[bestStartup]++;
-    wins[bestCpu]++;
-    wins[bestMem]++;
-
-    const ranked = [...browsers].sort((a,b) => wins[b] - wins[a]);
+    const { wins, ranked } = coreRanking(summary);
 
     tbody.innerHTML = ranked.map((b, idx) => {
       const s = summary[b];
       const ttfbStr = s.ttfb?.n > 0 ? `${s.ttfb.mean.toFixed(0)} ms` : '—';
       const speedStr = s.speedometer?.n > 0 ? `${(s.speedometer.geoMean || s.speedometer.mean).toFixed(1)} pts` : '—';
       const p90Str = s.pageload?.p90 ? `${s.pageload.p90.toFixed(0)} ms` : '—';
-      const rankBadge = idx === 0
+      const rank = 1 + ranked.filter(other => wins[other] > wins[b]).length;
+      const rankBadge = rank === 1
         ? `<span class="pill-tag pill-green">Rank #1</span>`
-        : `<span class="pill-tag pill-gray">Rank #${idx+1}</span>`;
+        : `<span class="pill-tag pill-gray">Rank #${rank}</span>`;
 
       return `
         <tr>
           <td><strong>${b}</strong></td>
-          <td class="mono">${s.startup.mean.toFixed(0)} ms</td>
-          <td class="mono">${s.cpu.mean.toFixed(1)}%</td>
-          <td class="mono">${s.memory.mean.toFixed(0)} MB</td>
-          <td class="mono">${s.pageload.mean.toFixed(0)} ms</td>
+          <td class="mono">${s.startup.n > 0 ? s.startup.mean.toFixed(0) + " ms" : "—"}</td>
+          <td class="mono">${s.cpu.n > 0 ? s.cpu.mean.toFixed(1) + "%" : "—"}</td>
+          <td class="mono">${s.memory.n > 0 ? s.memory.mean.toFixed(0) + " MB" : "—"}</td>
+          <td class="mono">${s.pageload.n > 0 ? s.pageload.mean.toFixed(0) + " ms" : "—"}</td>
           <td class="mono">${p90Str}</td>
           <td class="mono">${ttfbStr}</td>
           <td class="mono">${speedStr}</td>
@@ -671,22 +661,19 @@
       const isBase = target === baseline;
       const tData = summary[target];
 
-      const rStartup = tData.startup.mean > 0 ? (baseData.startup.mean / tData.startup.mean) : 1;
-      const rCpu = tData.cpu.mean > 0 ? (baseData.cpu.mean / tData.cpu.mean) : 1;
-      const rMem = tData.memory.mean > 0 ? (baseData.memory.mean / tData.memory.mean) : 1;
-      const rLoad = tData.pageload.mean > 0 ? (baseData.pageload.mean / tData.pageload.mean) : 1;
-
-      const spBase = baseData.speedometer.geoMean || baseData.speedometer.mean || 1;
-      const spTarget = tData.speedometer.geoMean || tData.speedometer.mean || 1;
-      const rSpeed = spBase > 0 ? (spTarget / spBase) : 1;
-
-      const ratios = [rStartup, rCpu, rMem, rLoad];
-      if (tData.speedometer.n > 0) ratios.push(rSpeed);
-
-      const logSum = ratios.reduce((acc, r) => acc + Math.log(r > 0 ? r : 1), 0);
-      const geoMeanRatio = Math.exp(logSum / ratios.length);
+      const measuredRatio = (key, higherIsBetter = false) => {
+        const baselineMetric = baseData[key], targetMetric = tData[key];
+        if (!baselineMetric?.n || !targetMetric?.n || baselineMetric.mean <= 0 || targetMetric.mean <= 0) return null;
+        return higherIsBetter ? targetMetric.mean / baselineMetric.mean : baselineMetric.mean / targetMetric.mean;
+      };
+      const rStartup = measuredRatio("startup"), rCpu = measuredRatio("cpu");
+      const rMem = measuredRatio("memory"), rLoad = measuredRatio("pageload");
+      const rSpeed = measuredRatio("speedometer", true);
+      const ratios = [rStartup, rCpu, rMem, rLoad, rSpeed].filter(value => value != null);
+      const geoMeanRatio = ratios.length ? Math.exp(ratios.reduce((sum, value) => sum + Math.log(value), 0) / ratios.length) : null;
 
       const fmtRatio = (r) => {
+        if (r == null) return '<span class="muted">—</span>';
         if (isBase) return `<span class="mono" style="color:var(--muted);">1.00x</span>`;
         if (r >= 1.05) return `<span class="pill-tag pill-green">${r.toFixed(2)}x (+${((r-1)*100).toFixed(0)}%)</span>`;
         if (r <= 0.95) return `<span class="pill-tag pill-amber">${r.toFixed(2)}x (-${((1-r)*100).toFixed(0)}%)</span>`;
@@ -694,7 +681,9 @@
       };
 
       let verdict;
-      if (isBase) {
+      if (geoMeanRatio == null) {
+        verdict = '<span class="pill-tag pill-gray">Insufficient data</span>';
+      } else if (isBase) {
         verdict = `<span class="pill-tag pill-gray">Baseline Reference</span>`;
       } else if (geoMeanRatio >= 1.05) {
         verdict = `<span class="pill-tag pill-green">Superior (+${((geoMeanRatio - 1) * 100).toFixed(0)}%)</span>`;
@@ -712,7 +701,7 @@
           <td>${fmtRatio(rMem)}</td>
           <td>${fmtRatio(rLoad)}</td>
           <td>${fmtRatio(rSpeed)}</td>
-          <td class="mono" style="font-size:15px; font-weight:800; color:${geoMeanRatio >= 1 ? 'var(--green)' : 'var(--amber)'};">${geoMeanRatio.toFixed(2)}x</td>
+          <td class="mono" style="font-size:15px; font-weight:800; color:${geoMeanRatio >= 1 ? 'var(--green)' : 'var(--amber)'};">${geoMeanRatio == null ? "—" : geoMeanRatio.toFixed(2) + "x"}</td>
           <td>${verdict}</td>
         </tr>
       `;
@@ -908,7 +897,7 @@
       pKiviat.style.display = 'flex';
       pComb.style.display = 'none';
       document.getElementById('chartTitle').innerText = 'Kiviat Multi-Dimensional Performance Radar';
-      document.getElementById('chartSubtitle').innerText = 'Normalized radial balance across core performance vectors (0–100% efficiency score, larger polygon = superior balance)';
+      document.getElementById('chartSubtitle').innerText = 'Relative efficiency across measured metrics (0–100%). Gaps indicate unavailable measurements.';
       renderKiviatChart();
     } else {
       pLoad.style.display = 'none';
@@ -1049,7 +1038,8 @@
     let workloadMap = {};
     if (workloads && workloads.comparison) {
       workloads.comparison.forEach(w => {
-        workloadMap[w.Browser] = parseFloat(w.LoadInflationRatio) || 1;
+        const value = parseFloat(w.LoadInflationRatio);
+        if (Number.isFinite(value) && value > 0) workloadMap[w.Browser] = value;
       });
     }
     const minInflation = Object.keys(workloadMap).length ? Math.min(...Object.values(workloadMap)) : 1;
@@ -1069,30 +1059,30 @@
       const s = summary[b];
       const bColor = BROWSER_COLORS[b] || { bg: 'rgba(100,100,100,0.25)', border: '#888' };
 
-      const scoreStartup = s.startup?.mean > 0 ? Math.min(100, (minStartup / s.startup.mean) * 100) : 60;
-      const scoreCpu = s.cpu?.mean > 0 ? Math.min(100, (minCpu / s.cpu.mean) * 100) : 60;
-      const scoreMem = s.memory?.mean > 0 ? Math.min(100, (minMem / s.memory.mean) * 100) : 60;
-      const scoreLoad = s.pageload?.mean > 0 ? Math.min(100, (minLoad / s.pageload.mean) * 100) : 60;
-      const scoreTtfb = s.ttfb?.mean > 0 ? Math.min(100, (minTtfb / s.ttfb.mean) * 100) : 70;
-      const scoreFcp = s.fcp?.mean > 0 ? Math.min(100, (minFcp / s.fcp.mean) * 100) : 70;
+      const scoreStartup = s.startup?.mean > 0 ? Math.min(100, (minStartup / s.startup.mean) * 100) : null;
+      const scoreCpu = s.cpu?.mean > 0 ? Math.min(100, (minCpu / s.cpu.mean) * 100) : null;
+      const scoreMem = s.memory?.mean > 0 ? Math.min(100, (minMem / s.memory.mean) * 100) : null;
+      const scoreLoad = s.pageload?.mean > 0 ? Math.min(100, (minLoad / s.pageload.mean) * 100) : null;
+      const scoreTtfb = s.ttfb?.mean > 0 ? Math.min(100, (minTtfb / s.ttfb.mean) * 100) : null;
+      const scoreFcp = s.fcp?.mean > 0 ? Math.min(100, (minFcp / s.fcp.mean) * 100) : null;
       
       const sp = s.speedometer?.geoMean || s.speedometer?.mean || 0;
-      const scoreSpeed = sp > 0 ? Math.min(100, (sp / maxSpeed) * 100) : 75;
+      const scoreSpeed = sp > 0 ? Math.min(100, (sp / maxSpeed) * 100) : null;
 
       const infl = workloadMap[b];
-      const scoreResilience = infl ? Math.min(100, (minInflation / infl) * 100) : 80;
+      const scoreResilience = infl ? Math.min(100, (minInflation / infl) * 100) : null;
 
       return {
         label: b,
         data: [
-          Number(scoreStartup.toFixed(1)),
-          Number(scoreCpu.toFixed(1)),
-          Number(scoreMem.toFixed(1)),
-          Number(scoreLoad.toFixed(1)),
-          Number(scoreTtfb.toFixed(1)),
-          Number(scoreFcp.toFixed(1)),
-          Number(scoreSpeed.toFixed(1)),
-          Number(scoreResilience.toFixed(1)),
+          scoreStartup == null ? null : Number(scoreStartup.toFixed(1)),
+          scoreCpu == null ? null : Number(scoreCpu.toFixed(1)),
+          scoreMem == null ? null : Number(scoreMem.toFixed(1)),
+          scoreLoad == null ? null : Number(scoreLoad.toFixed(1)),
+          scoreTtfb == null ? null : Number(scoreTtfb.toFixed(1)),
+          scoreFcp == null ? null : Number(scoreFcp.toFixed(1)),
+          scoreSpeed == null ? null : Number(scoreSpeed.toFixed(1)),
+          scoreResilience == null ? null : Number(scoreResilience.toFixed(1)),
         ],
         backgroundColor: bColor.bg.replace(/[\d\.]+\)$/, '0.25)'),
         borderColor: bColor.border,
@@ -1257,10 +1247,22 @@
     }
 
     const headers = Object.keys(rows[0]);
-    thead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
-    tbody.innerHTML = rows.map(r => `
-      <tr>${headers.map(h => `<td class="mono">${r[h]}</td>`).join('')}</tr>
-    `).join('');
+    const headerCells = [];
+    headers.forEach(header => {
+      const cell = document.createElement("th"); cell.textContent = header; headerCells.push(cell);
+    });
+    thead.replaceChildren(...headerCells);
+    const fragment = document.createDocumentFragment();
+    rows.forEach(row => {
+      const tr = document.createElement("tr");
+      headers.forEach(header => {
+        const cell = document.createElement("td"); cell.className = "mono";
+        cell.textContent = row[header] ?? ""; tr.append(cell);
+      });
+      fragment.append(tr);
+    });
+    tbody.replaceChildren(fragment);
+    filterLogs();
   }
 
   function switchCsvTab(tabName, btn) {

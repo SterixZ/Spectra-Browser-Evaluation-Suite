@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Spectra — Live Dashboard</title>
 <script>
-  document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
+  try {
+    document.documentElement.setAttribute('data-theme', localStorage.getItem('bp-theme') === 'dark' ? 'dark' : 'light');
+  } catch { document.documentElement.setAttribute('data-theme', 'light'); }
 </script>
 <link rel="stylesheet" href="/theme.css" />
 <script src="/chart.umd.min.js"></script>
@@ -160,7 +162,7 @@ function createInitialLabels() {
 }
 
 let wsConnected = false;
-const ws = new WebSocket(`ws://${location.host}`);
+const ws = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`);
 
 ws.onopen = () => {
   wsConnected = true;
@@ -177,6 +179,7 @@ ws.onclose = () => {
   statusEl.className = "status-banner failed";
   BROWSERS.forEach((name) => {
     document.getElementById(`launch-${name}`).disabled = true;
+    document.getElementById(`stop-${name}`).disabled = true;
   });
 };
 
@@ -504,10 +507,12 @@ ws.onmessage = (event) => {
 
 function launch(name) {
   if (!wsConnected) return;
+  document.getElementById(`launch-${name}`).disabled = true;
   ws.send(JSON.stringify({ action: "launch", browser: name }));
 }
 
 function stop(name) {
+  if (!wsConnected) return;
   ws.send(JSON.stringify({ action: "stop", browser: name }));
 }
 

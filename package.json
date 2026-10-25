@@ -1,8 +1,8 @@
 {
   "name": "browserperformance",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Spectra: Browser Evaluation Suite \u2014 repeatable browser benchmarks, live telemetry, and statistical comparisons.",
+  "main": "dashboard/server.js",
   "scripts": {
     "bench": "node scripts/runner.js",
     "bench:all": "node scripts/full_benchmark.js",
@@ -15,9 +15,17 @@
     "bench:workload:firefox": "node scripts/workload_firefox.js",
     "analyze": "node scripts/analyze.js",
     "dashboard": "node dashboard/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test",
+    "start": "node dashboard/server.js",
+    "check": "node scripts/check.js"
   },
-  "keywords": [],
+  "keywords": [
+    "browser",
+    "benchmark",
+    "performance",
+    "telemetry",
+    "statistics"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -26,5 +34,8 @@
     "express": "^4.19.2",
     "playwright": "^1.62.1",
     "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

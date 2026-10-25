@@ -4,16 +4,11 @@
 const path = require("path");
 const os = require("os");
 const http = require("http");
-const fs = require("fs");
-const { execSync } = require("child_process");
+const { sampleProcess } = require("../scripts/telemetry");
 const express = require("express");
 const { WebSocketServer } = require("ws");
 const { chromium, firefox } = require("playwright");
-const {
-  computeDescriptiveStats,
-  compareTwoAlternatives,
-  computeOneWayAnova,
-} = require("../scripts/stats");
+const { getBenchmarkData, listRunFolders, listWorkloadFolders, getWorkloadData } = require("../scripts/results");
 
 const TICK_MS = 1000;
 
@@ -23,28 +18,8 @@ const BROWSER_DEFS = {
   Firefox: { process: "firefox", channel: null },
 };
 
-const sessions = {};
-
-function getCpuTime(processName) {
-  try {
-    const cmd = `powershell -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object CPU -Sum).Sum"`;
-    const output = execSync(cmd, { encoding: "utf8" }).trim();
-    return Number(output) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function getMemoryMB(processName) {
-  try {
-    const cmd = `powershell -Command "(Get-Process ${processName} -ErrorAction SilentlyContinue | Measure-Object WorkingSet64 -Sum).Sum"`;
-    const output = execSync(cmd, { encoding: "utf8" }).trim();
-    const bytes = Number(output);
-    return isNaN(bytes) ? 0 : bytes / 1024 / 1024;
-  } catch {
-    return 0;
-  }
-}
+const sessions = Object.create(null);
+const pendingLaunches = new Map();
 
 async function launchBrowser(name) {
   if (sessions[name]) return;
@@ -58,17 +33,19 @@ async function launchBrowser(name) {
 
   const context = await browser.newContext();
 
+  const initialSample = await sampleProcess(def.process).catch(() => ({ cpuSeconds: 0 }));
   const session = {
     browser,
     context,
     processName: def.process,
-    lastCpuTime: getCpuTime(def.process),
+    lastCpuTime: initialSample.cpuSeconds,
     lastSampleTime: Date.now(),
     bandwidthBytes: 0,
     lastBandwidthBytes: 0,
     startTime: Date.now(),
     currentUrl: "",
     interval: null,
+    sampling: false,
   };
   sessions[name] = session;
 
@@ -95,7 +72,6 @@ async function launchBrowser(name) {
 
   context.on("page", trackPage);
   const firstPage = await context.newPage();
-  trackPage(firstPage);
   await firstPage.goto("https://www.google.com").catch(() => {});
   session.currentUrl = firstPage.url();
 
@@ -121,12 +97,18 @@ async function stopBrowser(name) {
   broadcast({ type: "closed", browser: name });
 }
 
-function tick(name) {
+async function tick(name) {
   const session = sessions[name];
-  if (!session) return;
+  if (!session || session.sampling) return;
+  session.sampling = true;
+  let sample;
+  try { sample = await sampleProcess(session.processName); }
+  catch { return; }
+  finally { session.sampling = false; }
+  if (sessions[name] !== session) return;
 
   const now = Date.now();
-  const currentCpuTime = getCpuTime(session.processName);
+  const currentCpuTime = sample.cpuSeconds;
   const deltaCpu = currentCpuTime - session.lastCpuTime;
   const deltaWallSec = (now - session.lastSampleTime) / 1000;
   const cpuPercent = deltaWallSec > 0 ? (deltaCpu * 100) / (os.cpus().length * deltaWallSec) : 0;
@@ -134,10 +116,10 @@ function tick(name) {
   session.lastCpuTime = currentCpuTime;
   session.lastSampleTime = now;
 
-  const memoryMB = getMemoryMB(session.processName);
+  const memoryMB = sample.memoryMB;
   const deltaBandwidthBytes = session.bandwidthBytes - session.lastBandwidthBytes;
   session.lastBandwidthBytes = session.bandwidthBytes;
-  const bandwidthRateKBs = deltaBandwidthBytes / 1024 / (TICK_MS / 1000);
+  const bandwidthRateKBs = deltaBandwidthBytes / 1024 / Math.max(deltaWallSec, 0.001);
 
   broadcast({
     type: "stats",
@@ -150,364 +132,8 @@ function tick(name) {
   });
 }
 
-function parseCsv(filepath) {
-  if (!fs.existsSync(filepath)) return [];
-  const lines = fs
-    .readFileSync(filepath, "utf8")
-    .trim()
-    .split(/\r?\n/)
-    .filter(Boolean);
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
-  return lines.slice(1).map((line) => {
-    // Regex matches comma-separated values while respecting quotes
-    const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
-    const row = {};
-    headers.forEach((h, i) => {
-      row[h] = values[i] ? values[i].trim().replace(/^"|"$/g, "") : "";
-    });
-    return row;
-  });
-}
-
-function computePairwise(seriesMap, unit) {
-  const browsers = Object.keys(seriesMap);
-  const pairs = [];
-  for (let i = 0; i < browsers.length; i++) {
-    for (let j = i + 1; j < browsers.length; j++) {
-      const b1 = browsers[i];
-      const b2 = browsers[j];
-      const result = compareTwoAlternatives(seriesMap[b1], seriesMap[b2], b1, b2, unit);
-      pairs.push(result);
-    }
-  }
-  return pairs;
-}
-
-function computeCdfData(values) {
-  const clean = values.filter((v) => typeof v === "number" && !isNaN(v)).sort((a, b) => a - b);
-  const n = clean.length;
-  if (n === 0) return [];
-
-  return clean.map((val, idx) => ({
-    x: Number(val.toFixed(1)),
-    y: Number(((idx + 1) / n).toFixed(4)),
-  }));
-}
-
-function getBenchmarkData(resultsDir) {
-  const metrics = parseCsv(path.join(resultsDir, "metrics.csv"));
-  const speedometer = parseCsv(path.join(resultsDir, "speedometer.csv"));
-  const pageloads = parseCsv(path.join(resultsDir, "pageload.csv")).concat(
-    parseCsv(path.join(resultsDir, "pageloads.csv"))
-  );
-  const workloadRaw = parseCsv(path.join(resultsDir, "workload_raw.csv"));
-
-  const networkPath = path.join(resultsDir, "network.csv");
-  const network = fs.existsSync(networkPath) ? parseCsv(networkPath) : [];
-
-  const raw = {
-    startup: {},
-    cpu: {},
-    memory: {},
-    speedometer: {},
-    pageload: {},
-    pageloadBySite: {},
-    ttfb: {},
-    fcp: {},
-    transferRate: {},
-    dns: {},
-    download: {},
-  };
-
-  const init = (b) => {
-    raw.startup[b] ||= [];
-    raw.cpu[b] ||= [];
-    raw.memory[b] ||= [];
-    raw.speedometer[b] ||= [];
-    raw.pageload[b] ||= [];
-    raw.ttfb[b] ||= [];
-    raw.fcp[b] ||= [];
-    raw.transferRate[b] ||= [];
-    raw.dns[b] ||= [];
-    raw.download[b] ||= [];
-  };
-
-  metrics.forEach((r) => {
-    const b = r.Browser || r.browser;
-    if (!b) return;
-    init(b);
-    const startup = Number(r["Startup(ms)"] || r.startup_time_ms || r.StartupMs);
-    if (!isNaN(startup) && startup > 0) raw.startup[b].push(startup);
-    const cpu = Number(r["CPU(%)"] || r["ActiveCPU(%)"] || r.cpu_percent || r.PeakCpuPercent || r.CpuPercent);
-    if (!isNaN(cpu)) raw.cpu[b].push(cpu);
-    const mem = Number(r["Memory(MB)"] || r["PeakMemory(MB)"] || r.memory_mb || r.PeakMemoryMB || r.MemoryMB);
-    if (!isNaN(mem)) raw.memory[b].push(mem);
-  });
-
-  speedometer.forEach((r) => {
-    const b = r.Browser || r.browser;
-    if (!b) return;
-    init(b);
-    const score = Number(r.Score || r.score);
-    if (!isNaN(score) && score > 0) raw.speedometer[b].push(score);
-  });
-
-  const rawSiteMetrics = {
-    pageload: {},
-    cpu: {},
-    memory: {},
-    network: {},
-    rate: {},
-  };
-
-  const pushSiteMetric = (type, site, b, val) => {
-    if (!site || !b || isNaN(val) || val <= 0) return;
-    rawSiteMetrics[type][site] ||= {};
-    rawSiteMetrics[type][site][b] ||= [];
-    rawSiteMetrics[type][site][b].push(val);
-  };
-
-  pageloads.forEach((r) => {
-    const b = r.Browser || r.browser;
-    const t = Number(r["LoadTime(ms)"] || r.load_time_ms || r.LoadTimeMs);
-    if (!b || isNaN(t) || t <= 0) return;
-    init(b);
-    raw.pageload[b].push(t);
-    const site = r.Website || r.url || r.Url || r.SiteName || "unknown";
-    pushSiteMetric("pageload", site, b, t);
-  });
-
-  network.forEach((r) => {
-    const b = r.Browser || r.browser;
-    if (!b) return;
-    init(b);
-
-    const site = r.Website || r.url || r.Url || r.SiteName || "unknown";
-
-    const ttfb = Number(r["TTFB(ms)"] || r.TTFB_Ms || r.ttfb);
-    if (!isNaN(ttfb) && ttfb > 0) raw.ttfb[b].push(ttfb);
-
-    const fcp = Number(r["FCP(ms)"] || r.FCP_Ms || r.fcp);
-    if (!isNaN(fcp) && fcp > 0) raw.fcp[b].push(fcp);
-
-    const rate = Number(r["TransferRate(KB/s)"] || r.TransferRateKBs || r.rate);
-    if (!isNaN(rate) && rate > 0) {
-      raw.transferRate[b].push(rate);
-      pushSiteMetric("rate", site, b, rate);
-    }
-
-    const dns = Number(r["DNS(ms)"] || r.DNS_Ms || r.dns);
-    if (!isNaN(dns)) raw.dns[b].push(dns);
-
-    const dl = Number(r["Download(ms)"] || r.Download_Ms || r.download);
-    if (!isNaN(dl)) raw.download[b].push(dl);
-
-    const cpu = Number(r["PeakCPU(%)"] || r.PeakCpuPercent || r.cpu_percent);
-    if (!isNaN(cpu) && cpu > 0) pushSiteMetric("cpu", site, b, cpu);
-
-    const mem = Number(r["PeakMemory(MB)"] || r.PeakMemoryMB || r.memory_mb);
-    if (!isNaN(mem) && mem > 0) pushSiteMetric("memory", site, b, mem);
-
-    const netMb = Number(r["Transfer(MB)"] || r.TransferMB || (r.TransferBytes ? r.TransferBytes / 1048576 : 0));
-    if (!isNaN(netMb) && netMb > 0) pushSiteMetric("network", site, b, netMb);
-  });
-
-  // If standard metrics weren't present, populate from workload_raw
-  workloadRaw.forEach((r) => {
-    const b = r.Browser || r.browser;
-    if (!b) return;
-    init(b);
-
-    const site = r.SiteName || r.url || r.Url || r.Website || "unknown";
-
-    const startup = Number(r.StartupMs || r["Startup(ms)"] || r.startup_time_ms);
-    if (!isNaN(startup) && startup > 0 && !raw.startup[b].length) raw.startup[b].push(startup);
-
-    const cpu = Number(r.PeakCpuPercent || r.CpuPercent || r["CPU(%)"] || r["ActiveCPU(%)"] || r.cpu_percent);
-    if (!isNaN(cpu)) {
-      raw.cpu[b].push(cpu);
-      pushSiteMetric("cpu", site, b, cpu);
-    }
-
-    const mem = Number(r.PeakMemoryMB || r.MemoryMB || r["Memory(MB)"] || r["PeakMemory(MB)"] || r.memory_mb);
-    if (!isNaN(mem)) {
-      raw.memory[b].push(mem);
-      pushSiteMetric("memory", site, b, mem);
-    }
-
-    const loadTime = Number(r.LoadTimeMs || r["LoadTime(ms)"] || r.load_time_ms);
-    if (!isNaN(loadTime) && loadTime > 0) {
-      if (!pageloads.length) raw.pageload[b].push(loadTime);
-      if (!pageloads.length) pushSiteMetric("pageload", site, b, loadTime);
-    }
-
-    const ttfb = Number(r.TTFB_Ms || r["TTFB(ms)"]);
-    if (!isNaN(ttfb) && ttfb > 0 && !raw.ttfb[b].length) raw.ttfb[b].push(ttfb);
-
-    const fcp = Number(r.FCP_Ms || r["FCP(ms)"]);
-    if (!isNaN(fcp) && fcp > 0 && !raw.fcp[b].length) raw.fcp[b].push(fcp);
-
-    const rate = Number(r.TransferRateKBs || r["TransferRate(KB/s)"]);
-    if (!isNaN(rate) && rate > 0) {
-      if (!raw.transferRate[b].length) raw.transferRate[b].push(rate);
-      pushSiteMetric("rate", site, b, rate);
-    }
-
-    const netMb = Number(r.TransferMB || r["Transfer(MB)"]);
-    if (!isNaN(netMb) && netMb > 0) pushSiteMetric("network", site, b, netMb);
-  });
-
-  const browsers = Array.from(
-    new Set([
-      ...Object.keys(raw.startup),
-      ...Object.keys(raw.cpu),
-      ...Object.keys(raw.memory),
-      ...Object.keys(raw.pageload),
-    ])
-  );
-
-  const summary = {};
-  const cdf = {};
-
-  browsers.forEach((b) => {
-    init(b);
-    summary[b] = {
-      startup: computeDescriptiveStats(raw.startup[b]),
-      cpu: computeDescriptiveStats(raw.cpu[b]),
-      memory: computeDescriptiveStats(raw.memory[b]),
-      speedometer: computeDescriptiveStats(raw.speedometer[b]),
-      pageload: computeDescriptiveStats(raw.pageload[b]),
-      ttfb: computeDescriptiveStats(raw.ttfb[b]),
-      fcp: computeDescriptiveStats(raw.fcp[b]),
-      transferRate: computeDescriptiveStats(raw.transferRate[b]),
-      dns: computeDescriptiveStats(raw.dns[b]),
-      download: computeDescriptiveStats(raw.download[b]),
-    };
-    cdf[b] = computeCdfData(raw.pageload[b]);
-  });
-
-  const siteMetrics = {
-    pageload: {},
-    cpu: {},
-    memory: {},
-    network: {},
-    rate: {},
-  };
-
-  for (const type of Object.keys(rawSiteMetrics)) {
-    for (const [site, bMap] of Object.entries(rawSiteMetrics[type])) {
-      const hasData = Object.values(bMap).some((vals) => vals && vals.length > 0);
-      if (!hasData) continue;
-      siteMetrics[type][site] = {};
-      for (const [b, vals] of Object.entries(bMap)) {
-        if (vals && vals.length > 0) {
-          siteMetrics[type][site][b] = computeDescriptiveStats(vals);
-        }
-      }
-    }
-  }
-
-  const siteSummary = siteMetrics.pageload;
-
-  const anova = {
-    startup: computeOneWayAnova(raw.startup),
-    cpu: computeOneWayAnova(raw.cpu),
-    memory: computeOneWayAnova(raw.memory),
-    pageload: computeOneWayAnova(raw.pageload),
-    speedometer: computeOneWayAnova(raw.speedometer),
-  };
-
-  const pairwise = {
-    startup: computePairwise(raw.startup, "ms"),
-    cpu: computePairwise(raw.cpu, "%"),
-    memory: computePairwise(raw.memory, "MB"),
-    pageload: computePairwise(raw.pageload, "ms"),
-    speedometer: computePairwise(raw.speedometer, "pts"),
-  };
-
-  const workloadCompPath = path.join(resultsDir, "workload_comparison.csv");
-  const workloadRawPath = path.join(resultsDir, "workload_raw.csv");
-  const workloadSummaryPath = path.join(resultsDir, "workload_summary.csv");
-
-  let workloads = null;
-  if (fs.existsSync(workloadCompPath) || fs.existsSync(workloadRawPath)) {
-    workloads = {
-      comparison: fs.existsSync(workloadCompPath) ? parseCsv(workloadCompPath) : [],
-      summary: fs.existsSync(workloadSummaryPath) ? parseCsv(workloadSummaryPath) : [],
-      raw: fs.existsSync(workloadRawPath) ? parseCsv(workloadRawPath) : [],
-    };
-  }
-
-  return {
-    summary,
-    siteSummary,
-    siteMetrics,
-    cdf,
-    anova,
-    pairwise,
-    workloads,
-    raw: {
-      metrics: metrics.length ? metrics : (workloads ? workloads.raw : []),
-      pageloads: pageloads.length ? pageloads : (workloads ? workloads.raw : []),
-      speedometer,
-      network,
-      workload_raw: workloads ? workloads.raw : [],
-    },
-  };
-}
-
-function listRunFolders() {
-  const PROJECT_ROOT = path.join(__dirname, "..");
-  const entries = fs.readdirSync(PROJECT_ROOT, { withFileTypes: true });
-  const runs = entries
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .filter((name) => name === "results" || name === "workloads" || name.startsWith("results_") || name.startsWith("workloads_"))
-    .filter((name) =>
-      fs.existsSync(path.join(PROJECT_ROOT, name, "metrics.csv")) ||
-      fs.existsSync(path.join(PROJECT_ROOT, name, "workload_raw.csv")) ||
-      fs.existsSync(path.join(PROJECT_ROOT, name, "pageload.csv")) ||
-      fs.existsSync(path.join(PROJECT_ROOT, name, "pageloads.csv"))
-    );
-
-  runs.sort((a, b) => {
-    if (a === "results") return -1;
-    if (b === "results") return 1;
-    if (a === "workloads") return -1;
-    if (b === "workloads") return 1;
-    return b.localeCompare(a);
-  });
-  return runs;
-}
-
-function listWorkloadFolders() {
-  const PROJECT_ROOT = path.join(__dirname, "..");
-  const entries = fs.readdirSync(PROJECT_ROOT, { withFileTypes: true });
-  const workloads = entries
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .filter((name) => name.startsWith("workloads_"))
-    .filter((name) => fs.existsSync(path.join(PROJECT_ROOT, name, "workload_raw.csv")));
-
-  workloads.sort((a, b) => b.localeCompare(a));
-  return workloads;
-}
-
-function getWorkloadData(workloadDir) {
-  const rawRows = parseCsv(path.join(workloadDir, "workload_raw.csv"));
-  const summaryRows = parseCsv(path.join(workloadDir, "workload_summary.csv"));
-  const comparisonRows = parseCsv(path.join(workloadDir, "workload_comparison.csv"));
-
-  return {
-    raw: rawRows,
-    summary: summaryRows,
-    comparison: comparisonRows,
-  };
-}
-
 const app = express();
+app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/runs", (req, res) => {
@@ -540,8 +166,13 @@ app.get("/api/workloads", (req, res) => {
   res.json({ dir: dirName, data: getWorkloadData(workloadDir) });
 });
 
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  res.status(500).json({ error: "Results could not be read. Check the CSV files and try again." });
+});
+
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 4096 });
 
 function broadcast(msg) {
   const data = JSON.stringify(msg);
@@ -561,33 +192,46 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    if (msg.action === "launch" && BROWSER_DEFS[msg.browser]) {
+    if (!msg || typeof msg !== "object" || Array.isArray(msg)) return;
+
+    if (msg.action === "launch" && Object.hasOwn(BROWSER_DEFS, msg.browser)) {
       try {
-        await launchBrowser(msg.browser);
+        if (!pendingLaunches.has(msg.browser)) {
+          pendingLaunches.set(msg.browser, launchBrowser(msg.browser).finally(() => pendingLaunches.delete(msg.browser)));
+        }
+        await pendingLaunches.get(msg.browser);
         broadcast({ type: "launched", browser: msg.browser });
       } catch (err) {
-        ws.send(JSON.stringify({ type: "error", browser: msg.browser, message: err.message }));
+        if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "error", browser: msg.browser, message: err.message }));
       }
     }
 
-    if (msg.action === "stop" && BROWSER_DEFS[msg.browser]) {
+    if (msg.action === "stop" && Object.hasOwn(BROWSER_DEFS, msg.browser)) {
+      await pendingLaunches.get(msg.browser)?.catch(() => {});
       await stopBrowser(msg.browser);
     }
   });
 });
 
-process.on("SIGINT", async () => {
+async function shutdown() {
   for (const name of Object.keys(sessions)) {
     await stopBrowser(name);
   }
-  process.exit();
-});
+  wss.close();
+  server.close(() => process.exit(0));
+}
+
+if (require.main === module) {
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+}
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+if (require.main === module) server.listen(PORT, "127.0.0.1", () => {
   console.log(`\n========================================================`);
   console.log(`🌐 BROWSER PERFORMANCE DASHBOARD`);
   console.log(`📡 Evaluation Console: http://localhost:${PORT}/benchmark.html`);
   console.log(`  Live Dashboard:     http://localhost:${PORT}`);
   console.log(`========================================================\n`);
 });
+module.exports = { app, server, wss };

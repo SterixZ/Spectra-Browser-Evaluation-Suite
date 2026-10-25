@@ -1,210 +1,121 @@
-# 🚀 Spectra: Enterprise Browser Systems Evaluation Suite
+# Spectra: Browser Evaluation Suite
 
-A high-precision statistical benchmark suite and telemetry dashboard for evaluating modern web browsers (**Google Chrome**, **Microsoft Edge**, and **Mozilla Firefox**), built on the performance evaluation methodology of **Raj K. Jain’s *The Art of Computer Systems Performance Analysis*** (Chapters 3, 10, 11, 13, and 20).
+Compare Chrome, Microsoft Edge, and Firefox using repeatable benchmark runs, live resource telemetry, and statistical analysis. Spectra includes a local dashboard for exploring startup time, page loading, CPU, memory, navigation timings, Speedometer scores, and light versus heavy workloads.
 
----
+## Quick start
 
-## ⚡ Quick Start Guide (For Teammates & Testers)
+**Requirements:** Node.js 20 or newer. Windows 10/11 is required for process CPU and working-set memory collection. Install Google Chrome and Microsoft Edge for their respective benchmark commands. Firefox runs use Playwright’s Firefox binary.
 
-Follow these simple steps to run the benchmark on your local machine:
+```sh
+npm ci
+npx playwright install firefox
+npm start
+```
 
-### 1. Prerequisites
-Ensure you have the following installed on your machine:
-* **Operating System**: Windows 10 / 11 *(64-bit)*
-* **Node.js**: Version `v18` or newer ([Download Node.js](https://nodejs.org/))
-* **Browsers Installed**: 
-  * Google Chrome
-  * Microsoft Edge
-  * Mozilla Firefox
+Open the [benchmark dashboard](http://127.0.0.1:3000/benchmark.html) to explore the included sample runs. Open the [live console](http://127.0.0.1:3000/) to launch a browser and watch its telemetry. The dashboard binds to the local machine only. Set `PORT` to use another port.
 
----
+The sample CSVs were recorded on **August 22, 2026**. They demonstrate the application and describe that particular machine and test session; they are not current browser rankings.
 
-### 2. Installation & Setup
+## Run benchmarks
 
-1. **Unzip the project folder** to your preferred location (e.g. `C:\Users\<You>\Downloads\BrowserPerformance\`).
-2. **Open Terminal / PowerShell / Command Prompt** inside this folder:
-   ```bash
-   cd BrowserPerformance
-   ```
-3. **Install Node.js dependencies**:
-   ```bash
-   npm install
-   ```
-4. **Install Firefox test binary (Required for Firefox automated runs)**:
-   ```bash
-   npx playwright install firefox
-   ```
-
----
-
-### 3. Run Benchmark Tests
-
-You can run the full automated test across all 3 browsers, or test individual browsers one by one:
-
-#### Option A: Standard 10-Site Benchmark (With Speedometer 3.0)
-Evaluates Startup Time, Active Multi-Core CPU %, WorkingSet64 RAM, Speedometer 3.0 Composite Score, and full W3C Timing Waterfalls (DNS, TCP, TLS, TTFB, Download, FCP) across 10 balanced domains.
-
-```bash
-# Run full suite across all 3 browsers (Chrome -> Edge -> Firefox):
+```sh
+# All browsers, sequentially
 npm run bench
 
-# OR run individual browsers independently:
-npm run bench:chrome     # Runs Google Chrome only
-npm run bench:edge       # Runs Microsoft Edge only
-npm run bench:firefox    # Runs Mozilla Firefox only
-```
+# One browser at a time
+npm run bench:chrome
+npm run bench:edge
+npm run bench:firefox
 
-> **Auto-Archive Feature**: When running individual browsers, results accumulate into `results/`. As soon as all 3 browsers complete, the folder is automatically archived to `results_YYYY-MM-DD_HH-MM/` and a fresh `results/` is prepared.
-
----
-
-#### Option B: Workload Benchmark (5 Ultra-Light vs. 5 Extreme-Heavy Dynamic SPAs)
-Evaluates architectural elasticity, memory inflation, and CPU overhead ratios under heavy client-side JavaScript/DOM stress (Jain Ch. 3 & 11).
-
-```bash
-# Run full workload benchmark across all 3 browsers:
+# Light and heavy workload suites
 npm run bench:workloads
-
-# OR run individual browsers on workloads:
-npm run bench:workload:chrome    # Tests Chrome on 5 Light vs 5 Heavy SPAs
-npm run bench:workload:edge      # Tests Edge on 5 Light vs 5 Heavy SPAs
-npm run bench:workload:firefox   # Tests Firefox on 5 Light vs 5 Heavy SPAs
+npm run bench:workload:chrome
+npm run bench:workload:edge
+npm run bench:workload:firefox
 ```
 
-> **Auto-Archive Feature**: Individual workload runs accumulate into `workloads/`. When the 3rd browser finishes, the system automatically computes `workload_summary.csv` and `workload_comparison.csv` with inflation ratios and archives to `workloads_YYYY-MM-DD_HH-MM/`.
+Standard benchmarks visit ten configured websites, collect navigation and resource measurements, and attempt Speedometer 3.0. Workloads compare five lightweight sites with five heavier pages. A failed Speedometer attempt is logged; it does not manufacture a score.
 
----
+Results accumulate in `results/` or `workloads/`. Re-running one browser replaces that browser’s in-progress observations. Once all three browsers are present, the core runner archives the directory with a timestamp. The top-level runner preserves unfinished data for other browsers and leaves archiving to the core runner.
 
-### 4. Launch the Interactive Visual Dashboard
+Close unrelated browser windows and background tasks before collecting results. Live CPU and memory measurements include **all processes with the browser’s process name**, including pre-existing browser sessions. Keep network conditions and benchmark settings consistent between runs.
 
-To view the interactive graphs, 8-Axis Kiviat Performance Radar, W3C Waterfall, and ANOVA statistical significance tables:
+### Configuration
 
-```bash
-npm run dashboard
+Edit `scripts/config.js` to change standard benchmark websites. Environment overrides include `RUNS` (default `3`) and `SPEEDOMETER_RUNS` (default `1`). For example, in PowerShell:
+
+```powershell
+$env:RUNS = '5'
+$env:SPEEDOMETER_RUNS = '3'
+npm run bench
 ```
 
-Open your browser and navigate to:
-* **Interactive Statistical Evaluation Dashboard**: [http://localhost:3000/benchmark.html](http://localhost:3000/benchmark.html)
-* **Real-time 1-Second Telemetry Console**: [http://localhost:3000](http://localhost:3000)
+Workload sites and iteration settings are defined separately in `scripts/workload_core.js`.
 
-*(Use the dropdown in the sidebar to switch between any archived test run folder instantly!)*
+## Explore and analyze results
 
----
+The dashboard provides:
 
-### 5. View Summary Stats in Terminal (CLI)
+- Run selection, shareable run URLs, light/dark themes, and responsive layouts.
+- A scorecard ranked by the number of wins across measured startup, CPU, and memory metrics; ties share wins.
+- Per-site loading charts, cumulative distributions, resource comparisons, and an eight-axis radar. Missing radar observations remain gaps.
+- Ratios against a selected baseline and workload inflation comparisons.
+- Searchable raw logs rendered as text, including quoted and multiline CSV values.
+- Visible loading, empty, and error states.
 
-You can also print full statistical summaries, $95\%$ Confidence Intervals, and One-Way ANOVA directly in the terminal:
-
-```bash
-# Analyze the latest run:
+```sh
+# Analyze the newest available run
 npm run analyze
 
-# Or analyze a specific historical folder:
-npm run analyze results_2026-08-22_19-56
-npm run analyze workloads_2026-08-22_19-56
+# Analyze a particular saved run
+npm run analyze -- results_2026-08-22_22-29
+npm run analyze -- workloads_2026-08-22_19-56
 ```
 
----
+Both the dashboard API and command-line analyzer use the same CSV parsing and aggregation code. They support standard and workload column names, retain valid zero measurements, ignore missing numeric cells, and keep per-run averages separate from per-site peaks.
 
-## 📋 Available NPM Commands Cheat Sheet
+## Statistical interpretation
 
-| Command | Script / Target | Description |
-| :--- | :--- | :--- |
-| `npm install` | Setup | Installs all required project dependencies |
-| `npx playwright install firefox` | Setup | Installs the Firefox automation binary |
-| `npm run bench` | Full Benchmark | Runs 3 iterations + Speedometer 3.0 on Chrome, Edge, and Firefox |
-| `npm run bench:chrome` | Chrome Standard | Runs 3 iterations + Speedometer 3.0 on Google Chrome |
-| `npm run bench:edge` | Edge Standard | Runs 3 iterations + Speedometer 3.0 on Microsoft Edge |
-| `npm run bench:firefox` | Firefox Standard | Runs 3 iterations + Speedometer 3.0 on Mozilla Firefox |
-| `npm run bench:workloads` | Full Workload | Runs 5 Light vs 5 Heavy sites (3 passes) on all 3 browsers |
-| `npm run bench:workload:chrome` | Chrome Workload | Runs 5 Light vs 5 Heavy sites on Google Chrome |
-| `npm run bench:workload:edge` | Edge Workload | Runs 5 Light vs 5 Heavy sites on Microsoft Edge |
-| `npm run bench:workload:firefox`| Firefox Workload | Runs 5 Light vs 5 Heavy sites on Mozilla Firefox |
-| `npm run dashboard` | Express / UI | Starts the web dashboard server on `http://localhost:3000` |
-| `npm run analyze` | Stats CLI | Computes means, standard deviations, $95\%\text{ CI}$, and ANOVA in terminal |
+The analysis reports sample counts, arithmetic means, sample standard deviations, percentiles, and Student’s t confidence intervals. Pairwise comparisons use Welch’s degrees of freedom. One-way ANOVA calculates an F-distribution p-value from the actual between-group and within-group degrees of freedom.
 
----
+- A single observation cannot estimate uncertainty; the CLI shows its confidence interval as `N/A`.
+- An empty series represents unavailable data, not measured zero performance.
+- Pairwise intervals are unadjusted comparisons; multiple comparisons can increase the false-positive rate.
+- Pooled page-load observations span different websites and repeated sessions. Treat their inference as exploratory; site mix, network conditions, and correlated observations affect interpretation.
+- Headline and ratio rankings are descriptive summaries of the selected run, not proof of an overall browser advantage.
+- Live transfer measurements estimate response sizes and are not a packet-level network capture.
 
-## 📊 Evaluation Architecture & Key Features
+Statistical references: [NIST Student’s t critical values](https://itl.nist.gov/div898/handbook/eda/section3/eda3672.htm), [NIST F distribution](https://itl.nist.gov/div898/handbook/eda/section3/eda3665.htm), and [NIST ANOVA](https://itl.nist.gov/div898/handbook/prc/section4/prc433.htm).
 
-### 1. 8-Axis Kiviat Performance Radar (Raj Jain Ch. 10.4)
-Located on the **Visual Charts** tab of the dashboard, this multi-dimensional radar balances performance across 8 key vectors normalized from $0–100\%$:
-1. 🚀 **Startup Responsiveness** ($1/\text{Startup Time}$)
-2. ⚡ **CPU Economy** ($1/\text{Active CPU \%}$)
-3. 💾 **RAM Economy** ($1/\text{WorkingSet64 Memory}$)
-4. ⏱️ **Response Velocity** ($1/\text{Page Load Time}$)
-5. 📡 **Reaction Time** ($1/\text{TTFB Immediacy}$)
-6. 🎨 **Render Immediacy** ($1/\text{First Contentful Paint}$)
-7. 🏎️ **Execution Velocity** ($\text{Speedometer 3.0 Score}$)
-8. 🏋️ **Workload Resilience** ($1/\text{Load Inflation Multiplier}$)
+## Development and validation
 
-### 2. Full W3C Protocol Timing Waterfall
-Extracts true browser network layer timings for every URL:
-* **DNS Resolution** (`domainLookupEnd - domainLookupStart`)
-* **TCP Handshake** (`connectEnd - connectStart`)
-* **TLS Negotiation** (`connectEnd - secureConnectionStart`)
-* **TTFB (Time to First Byte)** (`responseStart - requestStart`)
-* **Download Time** (Content streaming duration)
-* **FCP (First Contentful Paint)** (`first-contentful-paint`)
-
-### 3. Continuous Active Navigation Telemetry Monitor
-Samples process CPU and WorkingSet64 physical RAM every **300ms** continuously during page navigation and rendering. Accurately records:
-* `ActiveCPU(%)`: Cumulative multi-core average CPU utilization.
-* `PeakCPU(%)`: Peak processor burst spike during script execution.
-* `Memory(MB)`: Steady-state physical RAM.
-* `PeakMemory(MB)`: Peak memory footprint allocated during navigation.
-
-### 4. Workload Inflation Ratios & The Ratio Game (Raj Jain Ch. 11.5)
-Evaluates browser elasticity by comparing **5 Ultra-Lightweight Document Sites** (CERN, Example, NPR Text, DuckDuckGo Lite, W3C Spec) against **5 Extreme-Heavyweight SPAs** (YouTube, VS Code Hub, Reddit, Unsplash, Wiki GDP Table):
-* **Load Inflation Multiplier**: $\frac{\text{Mean Heavy Load Time}}{\text{Mean Light Load Time}}$
-* **RAM Inflation Multiplier**: $\frac{\text{Mean Heavy Peak RAM}}{\text{Mean Light Peak RAM}}$
-* **CPU Overhead Ratio**: $\frac{\text{Mean Heavy Peak CPU}}{\text{Mean Light Peak CPU}}$
-
----
-
-## 📂 Repository Structure
-
-```
-BrowserPerformance/
-├── dashboard/
-│   ├── public/
-│   │   ├── benchmark.html          # Executive Scorecard, Kiviat Radar & W3C UI
-│   │   ├── index.html              # Real-Time 1-Second Telemetry Console
-│   │   ├── theme.css               # Light/Dark Design System
-│   │   └── chart.umd.min.js        # Local Chart.js engine
-│   └── server.js                   # Express & WebSocket Server
-├── scripts/
-│   ├── config.js                   # Benchmark URL list & baseline configuration
-│   ├── browsers.js                 # Playwright Chromium/Edge/Firefox launchers
-│   ├── stats.js                    # ANOVA, Student's t-CI, Welch's t-test engine
-│   ├── bench_browser_core.js       # Standard benchmark execution & telemetry engine
-│   ├── bench_chrome.js             # Standalone Chrome benchmark runner
-│   ├── bench_edge.js               # Standalone Edge benchmark runner
-│   ├── bench_firefox.js            # Standalone Firefox benchmark runner
-│   ├── full_benchmark.js           # All-browsers sequential standard runner
-│   ├── workload_core.js            # Workload execution & inflation analysis engine
-│   ├── workload_chrome.js          # Standalone Chrome workload runner
-│   ├── workload_edge.js            # Standalone Edge workload runner
-│   ├── workload_firefox.js         # Standalone Firefox workload runner
-│   ├── workload_benchmark.js       # All-browsers sequential workload runner
-│   ├── runner.js                   # Full benchmark CLI runner & folder archiver
-│   └── analyze.js                  # Terminal statistical summary CLI
-├── results_*/                      # Archived standard benchmark datasets
-├── workloads_*/                    # Archived workload benchmark datasets
-└── package.json
+```sh
+npm run check
+npm test
 ```
 
----
+`check` validates JavaScript syntax, including inline dashboard scripts. The Node test suite covers CSV edge cases, statistical reference values, workload aggregation, ranking and log rendering, HTTP endpoints, and malformed WebSocket messages. GitHub Actions runs both checks on pushes and pull requests. No browser installation is needed for these regression tests.
 
-## 📚 References & Methodology
-* **Raj K. Jain**: *The Art of Computer Systems Performance Analysis: Techniques for Experimental Design, Measurement, Simulation, and Modeling*, John Wiley & Sons.
-  * **Chapter 3**: Selection of Techniques and Metrics (HB, LB, NB metrics, Time-Rate-Resource framework).
-  * **Chapter 10.4**: Kiviat Graphs (Multi-dimensional radial system balance).
-  * **Chapter 11**: Summarizing Measured Data & The Ratio Game (Avoiding baseline selection bias).
-  * **Chapter 13 & 14**: Confidence Intervals & Hypothesis Testing.
-  * **Chapter 20**: One-Way Analysis of Variance (ANOVA).
+Full benchmark runs launch installed browsers and contact public websites. They are separate from the automated regression suite.
 
----
+## Project layout
 
-## 📄 License
-ISC License. Built for rigorous computer systems performance evaluation and research.
+```text
+dashboard/
+  public/             Dashboard, live console, theme, and local Chart.js bundle
+  server.js           Local HTTP and WebSocket server
+scripts/
+  csv.js              Shared CSV parser and numeric-field handling
+  results.js          Run discovery and benchmark aggregation
+  distributions.js    Student’s t and F distribution calculations
+  stats.js            Descriptive statistics, Welch comparisons, and ANOVA
+  telemetry.js        Asynchronous Windows process sampling for the live console
+  analyze.js          Command-line reporting
+  bench_browser_core.js
+  workload_core.js    Standard and workload collection engines
+test/                 Regression and API tests
+results_*/            Included standard sample run
+workloads_*/          Included workload sample run
+```
+
+Presentation decks, PDF reports, ZIP/source archives, local environment files, dependencies, and in-progress results are ignored by Git. The original local presentation and report files remain on disk.
